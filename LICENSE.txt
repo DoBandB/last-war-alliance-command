@@ -1,0 +1,20 @@
+MIT LIZENZ-AUSNAHME & NUTZUNGSBEDINGUNGEN (WAR COMMAND)
+
+Copyright (c) [2026] [Denise W. / DoBandB]
+
+HIERMIT WIRD DIE KOMMERZIELLE NUTZUNG STRENGSTENS UNTERSAGT.
+
+Dieses Projekt ist kostenlos und quelloffen für den privaten Gebrauch und die Nutzung innerhalb von Spiel-Allianzen. 
+
+ES IST VERBOTEN:
+1. Den Code oder Teile davon gegen Bezahlung zu verkaufen.
+2. Den Code als kostenpflichtigen Service (SaaS / Hosting) anzubieten.
+3. Den Code hinter einer Paywall oder Werbe-Schranke zu verstecken.
+4. Spenden oder Gebühren für den Zugang zu einer Instanz dieser Software zu verlangen.
+
+Jede Person, die eine Kopie dieser Software und der zugehörigen Dokumentationsdateien (die "Software") erhält, darf die Software uneingeschränkt für PRIVATE, NICHT-KOMMERZIELLE Zwecke nutzen, kopieren, ändern und zusammenführen, unter den folgenden Bedingungen:
+
+1. Der oben stehende Urheberrechtshinweis und dieser Genehmigungshinweis müssen in allen Kopien oder wesentlichen Teilen der Software enthalten sein.
+2. Wenn du die Software veränderst und verbreitest, musst du sie unter derselben Lizenz (Nicht-Kommerziell) weitergeben.
+
+DIE SOFTWARE WIRD OHNE JEDE AUSDRÜCKLICHE ODER IMPLIZIERTE GARANTIE BEREITGESTELLT, EINSCHLIESSLICH DER GARANTIE ZUR BENUTZUNG FÜR DEN VORGESEHENEN ZWECK. IN KEINEM FALL SIND DIE AUTOREN ODER URHEBERRECHTSINHABER FÜR JEGLICHEN SCHADEN ODER SONSTIGE ANSPRÜCHE HAFTBAR ZU MACHEN.

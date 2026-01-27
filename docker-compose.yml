@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - ./src:/var/www/html
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: mariadb:10.6
+    environment:
+      MYSQL_ROOT_PASSWORD: change_me_root_password  # <--- PLATZHALTER
+      MYSQL_DATABASE: lastwar
+      MYSQL_USER: planner
+      MYSQL_PASSWORD: change_me_db_password         # <--- PLATZHALTER (Muss mit db_setup.php übereinstimmen)
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+
+volumes:
+  db_data:
