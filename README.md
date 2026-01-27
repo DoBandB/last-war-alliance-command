@@ -78,7 +78,9 @@ Das Tool ist für \*\*Docker Compose\*\* optimiert.
 
 \#\# 🖼️ Vorschau
 
-\*(Hier könntest du Screenshots der Anwendung einfügen: Login-Screen, Timer-Liste, Statistik-Tabelle)\*
+<img width="1861" height="837" alt="Screenshot 2026-01-27 172421" src="https://github.com/user-attachments/assets/8008910a-f5b2-43ab-b1e4-fe66e5df8473" />
+
+<img width="1892" height="748" alt="Screenshot 2026-01-27 172358" src="https://github.com/user-attachments/assets/46fef97b-6a8e-4a54-ac4f-a8227fc96bc1" />
 
 \---
 
