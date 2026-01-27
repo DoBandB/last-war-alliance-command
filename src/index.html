@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>War Command V73.0 (Logic & Style Fix)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        :root { --bg: #0b0c10; --card: #1f2833; --text: #c5c6c7; --cyan: #66fcf1; --blue: #45a29e; --red: #ff4d4d; --green: #6bcB77; --gold: #ffd700; --border: #2d303e; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; padding-bottom: 60px; font-size: 16px; overflow-y: auto; }
+        .wrap { max-width: 1450px; margin: 0 auto; padding: 10px; }
+        .navbar { background: #15161c; border-bottom: 2px solid var(--blue); padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .brand { font-size: 1.2rem; font-weight: 700; color: var(--cyan); letter-spacing: 1px; display:flex; align-items:center; gap:10px; }
+        .nav-links { display: flex; gap: 15px; }
+        .nav-btn { background: transparent; border: 1px solid var(--blue); color: var(--cyan); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+        .nav-btn:hover, .nav-btn.active { background: var(--blue); color: #fff; box-shadow: 0 0 10px var(--blue); }
+        .nav-btn.logout { border-color: var(--red); color: var(--red); }
+        .nav-btn.logout:hover { background: var(--red); color: #fff; box-shadow: 0 0 10px var(--red); }
+        
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CARDS & CONTAINERS */
+        .card { background: var(--card); border-radius: 8px; padding: 15px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        h2 { border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-top: 0; color: var(--cyan); font-size: 1.2rem; display:flex; justify-content:space-between; align-items:center; }
+        
+        /* FORMS */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 10px; }
+        input, select { background: #0b0c10; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        input:focus, select:focus { border-color: var(--cyan); outline: none; }
+        button.action-btn { background: var(--blue); color: #fff; border: none; padding: 10px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.2s; }
+        button.action-btn:hover { filter: brightness(1.2); }
+        
+        /* TABLE */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #333; font-size: 0.9rem; }
+        th { color: var(--cyan); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px; }
+        tr:hover { background: rgba(255,255,255,0.05); }
+        
+        /* TIMER SPECIFIC */
+        .timer-row.urgent { animation: pulseRed 2s infinite; }
+        @keyframes pulseRed { 0% { background: rgba(255,77,77,0.1); } 50% { background: rgba(255,77,77,0.3); } 100% { background: rgba(255,77,77,0.1); } }
+        .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+        .st-conquer { color: var(--red); border: 1px solid var(--red); }
+        .st-protect { color: var(--green); border: 1px solid var(--green); }
+        .st-other { color: var(--text); border: 1px solid #555; }
+        .del-btn { color: var(--red); cursor: pointer; font-weight: bold; border:none; background:none; }
+
+        /* STATS VIEW */
+        .stats-controls { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .stat-card { background: #1a1b22; padding: 10px; border-radius: 5px; margin-bottom: 5px; display: flex; justify-content: space-between; border-left: 3px solid var(--blue); }
+        .rank-1 { border-left-color: var(--gold); background: rgba(255, 215, 0, 0.1); }
+        .rank-2 { border-left-color: silver; }
+        .rank-3 { border-left-color: #cd7f32; }
+        .week-toggle { display:inline-block; margin:2px; padding:2px 8px; border:1px solid #444; cursor:pointer; font-size:0.8rem; border-radius:3px; }
+        .week-toggle.active { background: var(--green); color:#000; border-color:var(--green); }
+        .week-toggle.inactive { background: var(--red); color:#fff; border-color:var(--red); text-decoration: line-through; opacity:0.6; }
+
+        /* LOGIN */
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .login-box { background: var(--card); padding: 30px; border-radius: 10px; border: 1px solid var(--cyan); width: 300px; text-align: center; box-shadow: 0 0 20px rgba(102, 252, 241, 0.2); }
+        .login-box input { margin: 10px 0; background: #0b0c10; border: 1px solid var(--blue); padding: 12px; }
+        .login-box button { margin-top: 10px; padding: 12px; }
+
+        /* ADMIN PANEL */
+        .user-list { display: grid; gap: 10px; }
+        .u-item { display: flex; justify-content: space-between; background: #111; padding: 8px; align-items: center; border-radius: 4px; }
+        .role-sel { width: auto; padding: 2px; font-size: 0.8rem; margin-left: 10px; }
+
+        @media (max-width: 768px) {
+            .navbar { flex-direction: column; gap: 10px; }
+            .nav-links { width: 100%; justify-content: center; flex-wrap: wrap; }
+            .form-grid { grid-template-columns: 1fr 1fr; }
+            .hide-mobile { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h1 style="color:var(--cyan); margin-bottom:20px;">WAR COMMAND</h1>
+            <input type="text" id="lUser" placeholder="Username" autocomplete="username">
+            <input type="password" id="lPass" placeholder="Password" autocomplete="current-password">
+            <button class="action-btn" onclick="app.login()">AUTHENTICATE</button>
+            <div id="lErr" style="color:var(--red); margin-top:10px; font-size:0.9rem;"></div>
+        </div>
+    </div>
+
+    <div class="navbar">
+        <div class="brand">🚀 WAR COMMAND</div>
+        <div class="nav-links">
+            <button class="nav-btn active" onclick="app.tab('timers')">War Room</button>
+            <button class="nav-btn" onclick="app.tab('stats')">Intel</button>
+            <button class="nav-btn" onclick="app.tab('admin')" id="btnAdmin" style="display:none">Admin</button>
+            <button class="nav-btn logout" onclick="app.logout()">Exit</button>
+        </div>
+    </div>
+
+    <div class="wrap">
+        
+        <div id="tab-timers" class="tab-content active">
+            <div class="card" id="cAddT" style="display:none">
+                <h2>Neuer Befehl</h2>
+                <div class="form-grid">
+                    <select id="tSrv"></select>
+                    <input type="text" id="tName" placeholder="Ziel Name (z.B. Player/Ally)">
+                    <input type="text" id="tAlly" placeholder="Allianz Tag (Optional)">
+                    <input type="text" id="tCoord" placeholder="Koor (X:Y) oder Name">
+                    <select id="tAct">
+                        <option value="conquer">⚔️ Erobern</option>
+                        <option value="protect">🛡️ Schild/Schutz</option>
+                        <option value="defend">🔥 Verteidigen</option>
+                        <option value="abandon">🏳️ Aufgeben</option>
+                        <option value="extend_protect">🛡️ Schutz Verlängern</option>
+                        <option value="other">Info / Sonstiges</option>
+                    </select>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <input type="number" id="tD" placeholder="Tage" min="0" style="width:50px">
+                        <input type="number" id="tH" placeholder="Std" min="0" style="width:50px">
+                        <input type="number" id="tM" placeholder="Min" min="0" style="width:50px">
+                    </div>
+                </div>
+                <div style="margin-bottom:10px; display:flex; gap:10px; align-items:center;">
+                    <label>Farbe:</label>
+                    <input type="color" id="tColor" value="#ffffff" style="width:50px; height:30px; padding:0; border:none;">
+                    <span style="font-size:0.8rem; color:#888;">(Optional für Liste)</span>
+                </div>
+                <button class="action-btn" onclick="app.addTimer()">BEFEHL SENDEN</button>
+            </div>
+
+            <div class="card" id="cMsg" style="display:none">
+                <h2>Kommunikation</h2>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="mTxt" placeholder="Nachricht an Discord...">
+                    <button class="action-btn" style="width:auto; background:var(--gold); color:#000;" onclick="app.sendMsg('allianz')">📢 Ally</button>
+                    <button class="action-btn" style="width:auto; background:#aa00ff;" onclick="app.sendMsg('r4')">🔒 R4</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Aktive Operationen</h2>
+                <div class="table-wrap">
+                    <table id="tblT">
+                        <thead><tr><th>Srv</th><th>Ziel</th><th>Ally</th><th>Status</th><th>Koor</th><th>Ende</th><th>Rest</th><th>Action</th></tr></thead>
+                        <tbody id="listT"></tbody>
+                    </table>
+                </div>
+                <div id="noData" style="padding:20px; text-align:center; color:#555;">Keine aktiven Timer</div>
+            </div>
+        </div>
+
+        <div id="tab-stats" class="tab-content">
+            <div class="card">
+                <h2>📊 Data Intelligence</h2>
+                <div class="stats-controls">
+                    <select id="sMode" onchange="app.loadStats()"><option value="duel">Duell Stats</option><option value="marshall">Marshall Guard</option></select>
+                    <button class="action-btn" style="width:auto" onclick="app.loadStats()">Aktualisieren</button>
+                    <div id="r4Stat" style="display:none; gap:5px;">
+                        <button class="action-btn" style="width:auto; background:#444;" onclick="document.getElementById('impF').click()">📥 Import CSV</button>
+                        <input type="file" id="impF" accept=".csv,.txt" style="display:none" onchange="app.importCSV(this)">
+                        <button class="action-btn" style="width:auto; background:var(--red);" onclick="app.delStats()">🗑️ Clear Week</button>
+                    </div>
+                </div>
+                
+                <div id="weekToggles" style="margin-bottom:10px; padding:10px; background:#111; border-radius:4px;">
+                    <small style="color:#888; display:block; margin-bottom:5px;">Aktive Wochen (Klick zum Umschalten Safe/Kill):</small>
+                    <div id="wtList"></div>
+                </div>
+
+                <div style="height:300px; margin-bottom:20px;"><canvas id="chart1"></canvas></div>
+                <div id="statList"></div>
+            </div>
+             <div class="card">
+                <h2>🌍 Server Ranking</h2>
+                <div id="srvRkList"></div>
+                <div id="r4Srv" style="display:none; margin-top:10px;">
+                    <textarea id="jsonIn" rows="3" placeholder='JSON: [{"server":"1821","rank":1,"power":500,"name":"A"}]'></textarea>
+                    <button class="action-btn" onclick="app.saveSrv()">Update Server Stats</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-admin" class="tab-content">
+            <div class="card">
+                <h2>Benutzerverwaltung</h2>
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr auto;">
+                    <input type="text" id="nUser" placeholder="Username">
+                    <input type="password" id="nPass" placeholder="Password">
+                    <select id="nRole"><option value="R1">R1</option><option value="R2">R2</option><option value="R3">R3</option><option value="R4">R4 (Officer)</option><option value="R5">R5 (Admin)</option></select>
+                    <button class="action-btn" onclick="app.addUser()">User Anlegen</button>
+                </div>
+                <div class="user-list" id="lU"></div>
+            </div>
+             <div class="card">
+                <h2>Server Liste</h2>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <input type="text" id="nSrvName" placeholder="Server Nr (z.B. 1821)">
+                    <button class="action-btn" style="width:auto;" onclick="app.addServer()">Add Server</button>
+                </div>
+                <div id="lSrv" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+            </div>
+            <div class="card">
+                <h2>System Settings</h2>
+                <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <label>Discord Main Webhook</label><input type="text" id="sWhM">
+                    <label>Discord Bagger Webhook</label><input type="text" id="sWhB">
+                    <label>Discord Ally-Msg Webhook</label><input type="text" id="sWhA">
+                    <label>Discord R4-Msg Webhook</label><input type="text" id="sWhR">
+                    <button class="action-btn" onclick="app.saveSet()">Speichern</button>
+                </div>
+                <div style="margin-top:20px; border-top:1px solid #333; padding-top:10px;">
+                    <h3>Passwort ändern</h3>
+                    <input type="password" id="cpOld" placeholder="Altes Passwort" style="margin-bottom:5px;">
+                    <input type="password" id="cpNew" placeholder="Neues Passwort" style="margin-bottom:5px;">
+                    <button class="action-btn" onclick="app.chgPass()">Passwort Ändern</button>
+                </div>
+                 <div style="margin-top:20px;">
+                     <button class="action-btn" style="background:#555;" onclick="location.href='api.php?action=backup_db'">💾 Datenbank Backup (SQL)</button>
+                 </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const app = {
+            d: { users:[], timers:[], servers:[], stats:[], weeks:{} },
+            
+            init: function() {
+                this.checkAuth();
+                setInterval(() => this.loadTimers(), 30000); // Auto refresh
+                setInterval(() => this.tick(), 1000);
+            },
+
+            api: async function(act, data=null) {
+                try {
+                    const opts = { method: data ? 'POST' : 'GET' };
+                    if(data) opts.body = JSON.stringify(data);
+                    const r = await fetch(`api.php?action=${act}`, opts);
+                    const j = await r.json();
+                    if(j.error) { alert("API Error: "+j.error); return null; }
+                    return j;
+                } catch(e) { console.error(e); return null; }
+            },
+
+            checkAuth: async function() {
+                const r = await this.api('init');
+                if(r && r.auth) {
+                    this.d.username = r.username;
+                    this.d.role = r.role;
+                    this.d.isAdmin = r.isAdmin;
+                    this.d.servers = r.servers || [];
+                    document.getElementById('loginOverlay').style.display='none';
+                    this.renderUI();
+                    this.loadTimers();
+                } else {
+                    document.getElementById('loginOverlay').style.display='flex';
+                }
+            },
+
+            login: async function() {
+                const u = document.getElementById('lUser').value;
+                const p = document.getElementById('lPass').value;
+                if(!u || !p) return;
+                const r = await this.api('login', {username:u, password:p});
+                if(r && r.status === 'success') location.reload();
+                else document.getElementById('lErr').innerText = "Login Failed";
+            },
+            
+            logout: async function() { await this.api('logout'); location.reload(); },
+
+            renderUI: function() {
+                const r = this.d.role;
+                const isR4 = ['R4','R5'].includes(r);
+                if(isR4) {
+                    document.getElementById('cAddT').style.display = 'block';
+                    document.getElementById('cMsg').style.display = 'block';
+                    document.getElementById('r4Stat').style.display = 'flex';
+                    document.getElementById('r4Srv').style.display = 'block';
+                }
+                if(this.d.isAdmin) document.getElementById('btnAdmin').style.display = 'block';
+
+                // Fill Server Select
+                const sel = document.getElementById('tSrv');
+                sel.innerHTML = '';
+                this.d.servers.forEach(s => { sel.innerHTML += `<option>${s.name}</option>`; });
+            },
+
+            tab: function(id) {
+                document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
+                document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active'));
+                document.getElementById('tab-'+id).classList.add('active');
+                event.target.classList.add('active');
+                if(id==='stats') this.loadStats();
+                if(id==='admin') this.loadAdmin();
+            },
+
+            loadTimers: async function() {
+                const r = await this.api('init'); // Re-use init to get timers
+                if(!r) return;
+                this.d.timers = r.timers || [];
+                const l = document.getElementById('listT');
+                l.innerHTML = '';
+                
+                const now = Math.floor(Date.now()/1000);
+                let h = '';
+                const acts = { 'conquer':'⚔️ Erobern', 'protect':'🛡️ Schild', 'defend':'🔥 Deffen', 'abandon':'🏳️ Aufgeben', 'extend_protect':'🛡️+ Verlängern', 'other':'Info' };
+                const actCls = { 'conquer':'st-conquer', 'protect':'st-protect', 'extend_protect':'st-protect', 'defend':'st-conquer', 'abandon':'st-other', 'other':'st-other' };
+
+                this.d.timers.forEach(tm => {
+                    const end = new Date(tm.end_time).getTime()/1000;
+                    const diff = end - now;
+                    if(diff < -3600) return; // Hide very old
+                    
+                    const isUrgent = diff > 0 && diff < 600; // < 10 mins
+                    const r4Btn = ['R4','R5'].includes(this.d.role) ? `<button class="del-btn" onclick="app.delT(${tm.id})">X</button>` : '';
+                    
+                    const hr = Math.floor(diff/3600);
+                    const mn = Math.floor((diff%3600)/60);
+                    const sc = Math.floor(diff%60);
+                    
+                    // Time String
+                    let ts = (diff<0) ? "ABGELAUFEN" : `${hr}h ${mn}m ${sc}s`;
+                    const cl = (diff<0) ? 'color:var(--red)' : (diff<600 ? 'color:var(--gold)' : 'color:var(--green)');
+                    
+                    // Style row color if set
+                    const rowStyle = tm.color ? `style="border-left: 4px solid ${tm.color}"` : '';
+                    
+                    let ally = '';
+                    if(tm.alliance) ally = `<span style="color:#aaa; font-size:0.8em">[${tm.alliance}]</span>`;
+
+                    h += `<tr class="timer-row ${isUrgent?'urgent':''}" ${rowStyle}>
+                        <td>${tm.server_id}</td>
+                        <td>${tm.target_name}</td>
+                        <td>${ally}</td>
+                        <td><span class="status-badge ${actCls[tm.action_type]||'st-other'}">${acts[tm.action_type]||tm.action_type}</span></td>
+                        <td><a href="map1.html?x=${tm.x}&y=${tm.y}" target="_blank" style="color:var(--cyan);text-decoration:none">${tm.coord}</a></td>
+                        <td>${new Date(tm.end_time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td>
+                        <td style="${cl}; font-family:monospace; font-weight:bold" id="tm-${tm.id}" data-end="${end}">${ts}</td>
+                        <td>${r4Btn}</td>
+                    </tr>`;
+                });
+                l.innerHTML = h;
+                document.getElementById('noData').style.display = h ? 'none' : 'block';
+            },
+
+            tick: function() {
+                const now = Math.floor(Date.now()/1000);
+                document.querySelectorAll('[id^="tm-"]').forEach(el => {
+                    const end = parseInt(el.getAttribute('data-end'));
+                    const diff = end - now;
+                    if(diff < 0) { el.innerText = "ABGELAUFEN"; el.style.color='var(--red)'; return; }
+                    const h = Math.floor(diff/3600);
+                    const m = Math.floor((diff%3600)/60);
+                    const s = Math.floor(diff%60);
+                    el.innerText = `${h}h ${m}m ${s}s`;
+                    if(diff < 600) el.style.color = 'var(--gold)';
+                });
+            },
+
+            addTimer: async function() {
+                const d = {
+                    act: 'add_timer',
+                    server: document.getElementById('tSrv').value,
+                    name: document.getElementById('tName').value,
+                    alliance: document.getElementById('tAlly').value,
+                    coord: document.getElementById('tCoord').value,
+                    act_type: document.getElementById('tAct').value, // act_type vs act in PHP fix
+                    act: document.getElementById('tAct').value,
+                    d: document.getElementById('tD').value,
+                    h: document.getElementById('tH').value,
+                    m: document.getElementById('tM').value,
+                    color: document.getElementById('tColor').value
+                };
+                // Parse Coord
+                const c = d.coord.split(':');
+                d.x = c[0]||0; d.y = c[1]||0;
+                
+                await this.api('add_timer', d);
+                document.getElementById('tName').value='';
+                this.loadTimers();
+            },
+
+            delT: async function(id) {
+                if(confirm("Löschen?")) { await this.api('delete_timer', {id:id}); this.loadTimers(); }
+            },
+
+            sendMsg: async function(type) {
+                const m = document.getElementById('mTxt').value;
+                if(!m) return;
+                await this.api('send_custom_msg', {type:type, msg:m});
+                document.getElementById('mTxt').value = '';
+                alert("Gesendet");
+            },
+
+            // STATS ENGINE
+            loadStats: async function() {
+                const type = document.getElementById('sMode').value;
+                const r = await this.api('get_event_data', {type:type});
+                if(!r || !r.data) return;
+                
+                this.d.weeks = r.week_settings || {};
+                const list = r.data;
+                const sl = document.getElementById('statList');
+                
+                // Group by Week
+                const weeks = {};
+                list.forEach(i => {
+                    // Date to Week ID (e.g. 2024-W05)
+                    const d = new Date(i.import_date);
+                    const onejan = new Date(d.getFullYear(),0,1);
+                    const week = Math.ceil((((d - onejan) / 86400000) + onejan.getDay()+1)/7);
+                    const wid = `${d.getFullYear()}-W${week}`;
+                    if(!weeks[wid]) weeks[wid] = [];
+                    weeks[wid].push(i);
+                });
+
+                // Render Toggles
+                const wt = document.getElementById('wtList');
+                wt.innerHTML = '';
+                Object.keys(weeks).sort().reverse().forEach(wid => {
+                    const isSave = this.d.weeks[wid] == 1; // 1 = Save
+                    const cls = isSave ? 'inactive' : 'active';
+                    wt.innerHTML += `<span class="week-toggle ${cls}" onclick="app.togWeek('${wid}', ${!isSave})">${wid} (${isSave?'SAFE':'KILL'})</span>`;
+                });
+
+                // Filter Active Weeks (Kill Only) for Chart & List
+                const activeData = [];
+                Object.keys(weeks).forEach(wid => {
+                    if(this.d.weeks[wid] != 1) activeData.push(...weeks[wid]);
+                });
+
+                // Aggregate
+                const agg = {};
+                activeData.forEach(x => {
+                    if(!agg[x.player_name]) agg[x.player_name] = 0;
+                    agg[x.player_name] += parseInt(x.score);
+                });
+
+                // Sort
+                const sorted = Object.entries(agg).sort((a,b)=>b[1]-a[1]);
+
+                // Render List
+                let h = '<div style="display:grid; gap:5px;">';
+                sorted.forEach((x, i) => {
+                    let rk = '';
+                    if(i===0) rk='rank-1'; if(i===1) rk='rank-2'; if(i===2) rk='rank-3';
+                    h += `<div class="stat-card ${rk}">
+                        <span>#${i+1} <b>${x[0]}</b></span>
+                        <span style="color:var(--cyan)">${x[1].toLocaleString()} pts</span>
+                    </div>`;
+                });
+                h += '</div>';
+                sl.innerHTML = h;
+
+                // Chart
+                this.renderChart(sorted.slice(0, 10)); // Top 10
+            },
+
+            togWeek: async function(wid, state) {
+                if(!['R4','R5'].includes(this.d.role)) return;
+                await this.api('set_week_status', {week_id:wid, is_save:state});
+                this.loadStats();
+            },
+
+            importCSV: async function(el) {
+                const f = el.files[0];
+                if(!f) return;
+                const txt = await f.text();
+                const type = document.getElementById('sMode').value;
+                const res = await this.api('import_data', {type:type, csv:txt, date: new Date().toISOString().split('T')[0]});
+                alert("Importiert: " + res.count);
+                this.loadStats();
+            },
+
+            delStats: async function() {
+                if(confirm("Daten der aktuellen Woche löschen?")) {
+                    const type = document.getElementById('sMode').value;
+                    await this.api('delete_event_data', {type:type, date: new Date().toISOString().split('T')[0]});
+                    this.loadStats();
+                }
+            },
+
+            renderChart: function(data) {
+                const ctx = document.getElementById('chart1');
+                if(this.chart) this.chart.destroy();
+                this.chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(x=>x[0]),
+                        datasets: [{
+                            label: 'Punkte',
+                            data: data.map(x=>x[1]),
+                            backgroundColor: '#45a29e',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: {display:false}, datalabels: {color:'white', anchor:'end', align:'top'} },
+                        scales: { y: { display:false, grid:{display:false} }, x: { ticks:{color:'#aaa'}, grid:{display:false} } }
+                    },
+                    plugins: [ChartDataLabels]
+                });
+            },
+
+            saveSrv: async function() {
+                try {
+                    const j = JSON.parse(document.getElementById('jsonIn').value);
+                    await this.api('save_stats', {data:j});
+                    alert("Gespeichert");
+                    this.api('get_stats').then(r => this.rendSrv(r.stats));
+                } catch(e) { alert("JSON Fehler"); }
+            },
+            
+            rendSrv: function(list) {
+                const c = document.getElementById('srvRkList');
+                if(!list) { this.api('get_stats').then(r => this.rendSrv(r.stats)); return; }
+                let h = '<table class="srv-tab"><tr><th>#</th><th>Server</th><th>Power</th><th>Ally</th></tr>';
+                list.forEach(s => {
+                    h += `<tr><td>${s.rank}</td><td style="color:var(--gold);font-weight:bold">${s.server_name}</td><td>${parseInt(s.power).toLocaleString()}</td><td>${s.alliance_name||'-'}</td></tr>`;
+                });
+                h += '</table>';
+                c.innerHTML = h;
+            },
+
+            // ADMIN
+            loadAdmin: async function() {
+                const u = await this.api('get_users');
+                const sets = await this.api('get_settings');
+                const srv = await this.api('init'); // get servers
+
+                // Users
+                const lu = document.getElementById('lU');
+                lu.innerHTML = '';
+                u.users.forEach(us => {
+                     const isMe = us.id == this.d.user_id; // Check via ID not available directly in session obj here, but username matches
+                     const sel = `<select class="role-sel" onchange="app.upRole(${us.id}, this)" ${us.username==='admin'?'disabled':''}>
+                        ${['R1','R2','R3','R4','R5'].map(r=>`<option ${us.role==r?'selected':''}>${r}</option>`).join('')}
+                     </select>`;
+                     lu.innerHTML += `<div class="u-item"><span>${us.username}</span> <div>${sel} <button class="del-btn" onclick="app.delUser(${us.id})">X</button></div></div>`;
+                });
+
+                // Servers
+                const ls = document.getElementById('lSrv');
+                ls.innerHTML = '';
+                srv.servers.forEach(s => {
+                    ls.innerHTML += `<div style="background:#222; padding:5px 10px; border-radius:10px; border:1px solid #444;">${s.name} <span onclick="app.delSrv('${s.name}')" style="color:red;cursor:pointer;margin-left:5px;">x</span></div>`;
+                });
+
+                // Settings
+                if(sets) {
+                    document.getElementById('sWhM').value = sets.discord_webhook||'';
+                    document.getElementById('sWhB').value = sets.bagger_webhook||'';
+                    document.getElementById('sWhA').value = sets.allianz_webhook||'';
+                    document.getElementById('sWhR').value = sets.r4_webhook||'';
+                }
+            },
+
+            addUser: async function() {
+                const n = document.getElementById('nUser').value;
+                const p = document.getElementById('nPass').value;
+                const r = document.getElementById('nRole').value;
+                if(n&&p) { await this.api('add_user', {username:n, password:p, role:r}); this.loadAdmin(); }
+            },
+            delUser: async function(id) { if(confirm("Del?")) { await this.api('delete_user', {id:id}); this.loadAdmin(); } },
+            upRole: async function(id, el) { await this.api('update_user_role', {id:id, role:el.value}); },
+            
+            addServer: async function() { 
+                const n = document.getElementById('nSrvName').value; 
+                if(n) { await this.api('add_server',{name:n}); this.loadAdmin(); }
+            },
+            delSrv: async function(n) { if(confirm("Del?")) { await this.api('delete_server',{name:n}); this.loadAdmin(); } },
+
+            saveSet: async function() {
+                await this.api('save_settings', {
+                    discord_webhook: document.getElementById('sWhM').value,
+                    bagger_webhook: document.getElementById('sWhB').value,
+                    allianz_webhook: document.getElementById('sWhA').value,
+                    r4_webhook: document.getElementById('sWhR').value
+                });
+                alert("Gespeichert");
+            },
+
+            chgPass: async function() {
+                const o = document.getElementById('cpOld').value;
+                const n = document.getElementById('cpNew').value;
+                const r = await this.api('change_own_password', {old_pass:o, new_pass:n});
+                if(r.status==='success') { alert("OK"); document.getElementById('cpOld').value='';document.getElementById('cpNew').value=''; }
+                else alert("Fehler: "+r.error);
+            }
+        };
+
+        window.onload = function() { app.init(); app.rendSrv(); };
+    </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🚨 BAGGER ALARM</title>
+    <style>
+        body { background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
+        .btn {
+            background: red; color: white; border: 5px solid #ff5555;
+            width: 80vw; height: 50vh; font-size: 3rem; font-weight: bold;
+            border-radius: 20px; box-shadow: 0 0 50px red;
+            cursor: pointer; text-transform: uppercase;
+            animation: pulse 2s infinite;
+        }
+        .btn:active { transform: scale(0.95); background: #fff; color: red; }
+        .status { position: fixed; bottom: 20px; color: #fff; font-family: monospace; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <button class="btn" onclick="sendAlarm()">🚜 ALARM</button>
+    <div id="status" class="status">Bereit</div>
+
+    <script>
+        async function sendAlarm() {
+            const btn = document.querySelector('.btn');
+            const stat = document.getElementById('status');
+            
+            btn.style.background = "orange";
+            btn.textContent = "SENDING...";
+            stat.textContent = "Verbinde...";
+
+            try {
+                // Relativer Pfad zur API
+                const r = await fetch('api.php?action=bagger_alarm', {method:'POST'});
+                const j = await r.json();
+                
+                if(j.status === 'success') {
+                    btn.style.background = "green";
+                    btn.style.borderColor = "#0f0";
+                    btn.style.boxShadow = "0 0 50px #0f0";
+                    btn.textContent = "GESENDET!";
+                    stat.textContent = "Erfolg! Nachricht geht an Discord.";
+                } else { throw new Error("API Fehler"); }
+            } catch(e) {
+                btn.style.background = "#300";
+                btn.textContent = "FEHLER";
+                stat.textContent = "Fehler: " + e;
+            }
+
+            // Reset nach 3 Sekunden
+            setTimeout(() => {
+                btn.style.background = "red";
+                btn.style.borderColor = "#ff5555";
+                btn.style.boxShadow = "0 0 50px red";
+                btn.textContent = "🚜 ALARM";
+                stat.textContent = "Bereit";
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

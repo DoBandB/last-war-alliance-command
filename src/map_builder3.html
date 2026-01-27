@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>War Command - Map Builder V14.0</title>
+    <style>
+        body { background: #0b0c10; color: #c5c6c7; font-family: 'Segoe UI', sans-serif; padding: 20px; user-select: none; overflow: hidden; }
+        .wrap { max-width: 1800px; margin: 0 auto; height: 95vh; display: grid; grid-template-columns: 0fr 3fr 1fr; gap: 20px; transition: grid-template-columns 0.3s ease; }
+        .wrap.debug-active { grid-template-columns: 1fr 3fr 1fr; }
+
+        /* DEBUG */
+        .debug-panel { background: #111; border: 1px solid #333; border-radius: 8px; padding: 10px; font-family: monospace; font-size: 0.7rem; color: #0f0; overflow-y: auto; overflow-x: hidden; display: none; box-shadow: inset 0 0 10px #000; }
+        .wrap.debug-active .debug-panel { display: block; }
+        .log-entry { margin-bottom: 2px; border-bottom: 1px solid #222; word-break: break-all; }
+        .log-warn { color: #f90; } .log-err { color: #f00; font-weight: bold; }
+        
+        /* MAP */
+        .map-wrapper { position: relative; width: 100%; height: 100%; display:flex; align-items:center; justify-content:center; }
+        .map-container { position: relative; width: 100%; padding-bottom: 100%; background: #050505; border: 2px solid #444; overflow: hidden; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 5% 5%; cursor: crosshair; }
+        
+        /* TILES */
+        .map-tile { position: absolute; border: 1px solid rgba(255,255,255,0.5); display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 0.45em; line-height: 1.1; color: #fff; text-align: center; cursor: grab; z-index: 10; transform: translate(-50%, 50%); box-sizing: border-box; overflow: hidden; text-shadow: 0 1px 2px #000; transition: background 0.2s, border 0.2s; }
+        .map-tile.is-dragging { cursor: grabbing; z-index: 1000; border-color: #0f0; box-shadow: 0 0 20px #0f0; opacity: 0.9; transition: none; }
+        .map-tile.is-selected { border: 2px solid #ff9f43 !important; box-shadow: 0 0 15px #ff9f43; z-index: 900; background-color: rgba(255, 159, 67, 0.3) !important; }
+        .map-tile.is-collision { background: rgba(255, 0, 0, 0.6) !important; border: 2px solid red !important; box-shadow: inset 0 0 15px #500 !important; z-index: 850; animation: pulse-red 2s infinite; }
+        .map-tile:hover:not(.is-dragging) { border-color: #fff; z-index: 800; }
+        
+        /* COLORS */
+        .c-base { background: rgba(80, 80, 80, 0.65); }
+        .c-city { background: rgba(69, 162, 158, 0.65); border-color: #66fcf1; }
+        .c-capitol { background: rgba(255, 215, 0, 0.5); border-color: gold; }
+
+        /* GUIDES */
+        .snap-line { position: absolute; background: #0f0; pointer-events: none; z-index: 999; display: none; }
+        .snap-v { width: 1px; top: 0; bottom: 0; }
+        .snap-h { height: 1px; left: 0; right: 0; }
+
+        /* SIDEBAR */
+        .sidebar { background: #1f2833; padding: 15px; border-radius: 8px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; }
+        h2 { color: #66fcf1; margin-top: 0; font-size:1.1rem; border-bottom: 1px solid #444; padding-bottom: 10px; display:flex; justify-content:space-between; align-items:center; }
+        label { display: block; margin: 8px 0 2px; font-size: 0.75em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+        input, select, textarea { width: 100%; padding: 8px; background: #0b0c10; border: 1px solid #444; color: #fff; border-radius: 4px; font-size: 0.85rem; box-sizing: border-box; }
+        input[type="color"] { height: 35px; padding: 2px; cursor: pointer; }
+        textarea { font-family: monospace; font-size: 0.75rem; resize: vertical; min-height: 60px; }
+        .row { display: flex; gap: 10px; }
+        button { width: 100%; padding: 8px; margin-top: 8px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.75rem; transition: 0.2s; }
+        .btn-add { background: #66fcf1; color: #000; } .btn-add:hover { background: #fff; }
+        .btn-save { background: #ff9f43; color: #000; display: none; } .btn-save:hover { background: #fff; }
+        .btn-cancel { background: #444; color: #fff; max-width: 40px; display: none; }
+        .btn-del-main { background: #f00; color: #fff; max-width: 40px; display: none; }
+        .btn-io { background: #45a29e; color: #fff; flex:1; font-size: 0.7rem; }
+        .btn-csv { background: #e0a800; color: #000; flex:1; font-size: 0.7rem; }
+        .btn-dl { background: #fff; color: #000; border: 2px solid #66fcf1; margin-top: 15px; }
+        .btn-clear { background: #5a1a1a; color: #eaa; margin-top: 20px; border: 1px solid #500; }
+        .btn-center { background: #d63384; color: #fff; border: 1px solid #f06; }
+        .btn-debug { background: #333; border: 1px solid #555; color: #888; font-size: 0.7rem; width: auto; padding: 5px 10px; margin: 0; }
+        .btn-debug.active { color: #0f0; border-color: #0f0; }
+
+        .list-con { margin-top: 15px; border-top: 1px solid #444; flex-grow: 1; overflow-y: auto; min-height: 150px; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 5px; border-bottom: 1px solid #333; font-size: 0.75em; background: #15161c; margin-top: 1px; cursor: pointer; }
+        .item:hover { background: #2a2a35; }
+        .item.active { background: rgba(255, 159, 67, 0.2); border-left: 3px solid #ff9f43; }
+        .item.conflict { background: rgba(255, 0, 0, 0.2); border-left: 3px solid red; }
+        .btn-del { background: transparent; color: #f55; padding: 2px 6px; border: 1px solid #522; border-radius: 3px; margin: 0; width: auto; font-size: 0.7rem; margin-left:5px; }
+        .btn-del:hover { background: #f00; color: #fff; }
+        
+        .info-box { font-size: 0.75rem; color: #aaa; background: #222; padding: 8px; border-left: 3px solid #0f0; margin-bottom: 10px; }
+        .grp-title { color: #fff; border-bottom: 1px solid #444; padding-bottom: 2px; margin-top: 15px; font-size: 0.8rem; font-weight: bold; }
+        #conflictCount { font-size: 0.7rem; background: #333; padding: 2px 6px; border-radius: 4px; color: #888; }
+        #conflictCount.has-error { background: #f00; color: #fff; animation: pulse-red 2s infinite; }
+        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        @media (max-width: 1000px) { .wrap { grid-template-columns: 1fr; height: auto; } .map-container { padding-bottom: 100%; } }
+    </style>
+</head>
+<body>
+
+<div class="wrap" id="mainWrap">
+    <div class="debug-panel" id="debugLog">
+        <div style="color:#fff; border-bottom:1px solid #555; padding-bottom:5px; margin-bottom:5px">DEBUG CONSOLE</div>
+    </div>
+
+    <div class="map-wrapper">
+        <div class="map-container" id="map" onclick="handleMapClick(event)">
+            <div id="guideV" class="snap-line snap-v"></div>
+            <div id="guideH" class="snap-line snap-h"></div>
+        </div>
+    </div>
+    
+    <div class="sidebar">
+        <h2>
+            <span>🛠️ V14.0</span>
+            <div style="display:flex; gap:5px; align-items:center">
+                <span id="conflictCount">OK</span>
+                <button class="btn-debug" onclick="toggleDebug(this)">🐞</button>
+            </div>
+        </h2>
+        <div class="info-box" id="infoBox">Modus: <b>Neu erstellen</b></div>
+        
+        <div class="row">
+            <div style="flex:1"><label>X (Mitte)</label><input type="number" id="iX" value="500"></div>
+            <div style="flex:1"><label>Y (Mitte)</label><input type="number" id="iY" value="500"></div>
+        </div>
+        
+        <label>Gebäude Typ</label>
+        <select id="iName" onchange="autoSelect()">
+            <option value="Militärstützpunkt">Militärstützpunkt</option>
+            <option value="Brauerei">Brauerei</option>
+            <option value="Nebelschleiergasse">Nebelschleiergasse</option>
+            <option value="Freizeitpark">Freizeitpark</option>
+            <option value="Kunstmuseum">Kunstmuseum</option>
+            <option value="Stadion">Stadion</option>
+            <option value="Adelspalast">Adelspalast</option>
+            <option value="Kapitol">Kapitol</option>
+        </select>
+        
+        <div class="row">
+            <div style="flex:1"><label>Größe</label><select id="iSize"><option value="small">Klein</option><option value="large">Groß</option><option value="capitol">Kapitol</option></select></div>
+            <div style="flex:1"><label>Level</label><select id="iLvl"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select></div>
+        </div>
+        
+        <label>Allianz Name</label>
+        <div style="display:flex; gap:5px">
+            <select id="iAllyList" onchange="pickAlly(this)" style="flex:1"><option value="">- Wähle -</option></select>
+            <input id="iOwner" placeholder="Manuell..." style="flex:1">
+        </div>
+        
+        <div class="row">
+            <div style="flex:1"><label>Farbe</label><input type="color" id="iColor" value="#000000"></div>
+            <div style="flex:1"><label>Verderber</label><select id="iCorr"><option value="">Keiner</option><option value="1">Lv 1</option><option value="15">Lv 15</option><option value="20">Lv 20</option></select></div>
+        </div>
+
+        <div class="btn-row" style="display:flex; gap:5px; margin-top:10px;">
+            <button id="btnAdd" class="btn-add" onclick="addNewItem()">Hinzufügen</button>
+            <button id="btnSave" class="btn-save" onclick="saveAndRelease()">Speichern</button>
+            <button id="btnDeleteMain" class="btn-del-main" onclick="deleteSelected()">🗑️</button>
+            <button id="btnCancel" class="btn-cancel" onclick="deselect(true)">✖</button>
+        </div>
+        
+        <div class="list-con" id="list"></div>
+        
+        <div class="grp-title">Import / Export</div>
+        <textarea id="ioData" placeholder="Daten hier einfügen..."></textarea>
+        <div class="row">
+            <button class="btn-io" onclick="importData()">Text Import</button>
+            <button class="btn-io" style="background:#444" onclick="exportData()">Text Export</button>
+        </div>
+        <div class="row">
+            <button class="btn-csv" onclick="importCSV()">CSV Import (;;)</button>
+            <button class="btn-csv" style="background:#b8860b" onclick="exportCSV()">CSV Export (;;)</button>
+        </div>
+        
+        <button class="btn-dl" onclick="downloadStandalone()">🌍 Standalone Export (HTML)</button>
+        <button class="btn-center" onclick="autoCenterMap()">🎯 Karte Zentrieren</button>
+        <button class="btn-clear" onclick="clearMap()">🗑️ Alles Löschen</button>
+    </div>
+</div>
+
+<script>
+    let mapLines = [];
+    let selectedIdx = null; 
+    let dragItem = null;
+    let isDragging = false; 
+    let parsedTiles = []; 
+    let debugMode = false;
+
+    async function init() {
+        log("Initialisiere V14.0...");
+        try {
+            const r = await fetch('api.php?action=get_stats');
+            const data = await r.json();
+            if(data.stats) {
+                const alliances = [...new Set(data.stats.map(s => s.alliance_name).filter(n => n))].sort();
+                const sel = document.getElementById('iAllyList');
+                alliances.forEach(a => sel.add(new Option(a, a)));
+                log(`DB: ${alliances.length} Allianzen geladen.`);
+            }
+        } catch(e) { log("DB Offline - Nur lokale Features", "warn"); }
+    }
+
+    // --- STANDALONE EXPORT FIX ---
+    function downloadStandalone() {
+        if(mapLines.length === 0) return alert("Karte leer!");
+        
+        const css = document.querySelector('style').innerHTML;
+        const mapDataJson = JSON.stringify(mapLines);
+        
+        const html = `<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>War Command - Map View</title>
+<style>
+    body { background: #0b0c10; color: #c5c6c7; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-y: auto; }
+    
+    .nav { position: sticky; top: 0; background: #1f2833; padding: 15px; border-bottom: 2px solid #66fcf1; z-index: 2000; display: flex; gap: 15px; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); flex-wrap:wrap; }
+    select { background: #0b0c10; color: #fff; border: 1px solid #444; padding: 8px 15px; border-radius: 6px; font-size:16px; cursor:pointer; }
+    select:hover { border-color:#66fcf1; }
+    
+    .map-frame { 
+        width: 95%; max-width: 1000px; aspect-ratio: 1/1; margin: 30px auto; 
+        position: relative; background: #050505; border: 2px solid #444; 
+        background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 5% 5%; box-shadow: 0 0 50px rgba(0,0,0,0.5);
+    }
+    
+    .map-tile {
+        position: absolute; border: 1px solid rgba(255,255,255,0.5);
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        font-size: 0.45em; line-height: 1.1; color: #fff; text-align: center;
+        box-sizing: border-box; overflow: hidden; text-shadow: 0 1px 2px #000;
+        transition: all 0.3s ease; cursor: default;
+        transform: translate(-50%, 50%); /* FIX FOR GAP ISSUE */
+    }
+    
+    .c-base { background: rgba(80, 80, 80, 0.65); }
+    .c-city { background: rgba(69, 162, 158, 0.65); border-color: #66fcf1; }
+    .c-capitol { background: rgba(255, 215, 0, 0.5); border-color: gold; }
+
+    /* FILTERS */
+    .dimmed { opacity: 0.1; filter: grayscale(100%); z-index: 1 !important; border-color:#222 !important; }
+    .highlight { 
+        box-shadow: 0 0 25px #fff; z-index: 1000 !important; 
+        border-color: #fff !important; 
+        transform: translate(-50%, 50%) scale(1.1); /* Keep translate */
+        background-color: rgba(255,255,255,0.15) !important;
+    }
+
+    .tt { position:fixed; background:rgba(20,20,30,0.95); border:1px solid #66fcf1; padding:10px; border-radius:6px; pointer-events:none; display:none; z-index:3000; font-size:14px; box-shadow: 0 5px 15px #000; }
+</style>
+</head>
+<body>
+    <div class="nav">
+        <select id="selType" onchange="filterMap()"><option value="all">🏢 Alle Gebäude</option></select>
+        <select id="selLvl" onchange="filterMap()"><option value="all">⭐ Alle Level</option></select>
+        <button onclick="resetFilter()" style="background:#444; color:#fff; border:none; padding:8px 15px; border-radius:6px; cursor:pointer;">Reset</button>
+    </div>
+    <div class="map-frame" id="map"></div>
+    <div class="tt" id="tooltip"></div>
+    <script>
+        const data = ${mapDataJson};
+        const mapEl = document.getElementById('map');
+        const tt = document.getElementById('tooltip');
+        let tiles = [];
+
+        function hexToRgba(hex, alpha) {
+            if(!hex || hex === '#000000') return null;
+            let c = hex.substring(1).split('');
+            if(c.length==3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+            c = '0x'+c.join('');
+            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+        }
+
+        const types = new Set();
+        const levels = new Set();
+
+        data.forEach(line => {
+            const coord = line.match(/x\\s*(\\d+)\\s*y\\s*(\\d+)/i);
+            if(!coord) return;
+            const x = parseInt(coord[1]);
+            const y = parseInt(coord[2]);
+            let w=49, h=49, type='base';
+            if(line.includes('grosse')) h=73;
+            if(line.includes('Kapitol')) { w=98; h=98; type='capitol'; }
+            else if(!line.includes('Militär')) type='city';
+            
+            const ownerMatch = line.match(/\\|\\s*Owner:\\s*(.*?)\\s*(?:\\||$)/);
+            const colorMatch = line.match(/\\|\\s*Color:\\s*(.*?)\\s*(?:\\||$)/);
+            const owner = ownerMatch ? ownerMatch[1] : '';
+            const color = colorMatch ? colorMatch[1] : '';
+
+            const d = document.createElement('div');
+            d.className = 'map-tile c-'+type;
+            d.style.left = (x/10)+'%';
+            d.style.bottom = (y/10)+'%';
+            d.style.width = 'calc('+(w/10)+'% - 0.15%)';
+            d.style.height = 'calc('+(h/10)+'% - 0.15%)';
+            
+            if(color) { d.style.backgroundColor = hexToRgba(color, 0.6); d.style.borderColor = color; }
+
+            let name = line.match(/-\\s(.*?)\\sLv\\./)?.[1] || 'Objekt';
+            let lvl = line.match(/(?:Lv\\.?|lv\\.)\\s*(\\d+)/)?.[1] || '1';
+            
+            types.add(name); levels.add(lvl);
+            d.innerHTML = '<div>'+name.substr(0,8)+'<br>Lv.'+lvl+'</div>';
+            d.dataset.name = name; d.dataset.lvl = lvl;
+
+            d.onmouseenter = (e) => {
+                tt.style.display='block';
+                tt.innerHTML = '<b style="color:#66fcf1">'+name+'</b><br>Level: '+lvl+'<br>Pos: '+x+'/'+y + (owner ? '<br>Besitzer: <span style="color:'+(color||'#fff')+'">'+owner+'</span>' : '');
+            };
+            d.onmousemove = (e) => { tt.style.left=e.pageX+15+'px'; tt.style.top=e.pageY+15+'px'; };
+            d.onmouseleave = () => { tt.style.display='none'; };
+
+            mapEl.appendChild(d); tiles.push(d);
+        });
+
+        const selT = document.getElementById('selType');
+        Array.from(types).sort().forEach(t => selT.add(new Option(t, t)));
+        const selL = document.getElementById('selLvl');
+        Array.from(levels).sort((a,b)=>a-b).forEach(l => selL.add(new Option('Level '+l, l)));
+
+        function filterMap() {
+            const tVal = document.getElementById('selType').value;
+            const lVal = document.getElementById('selLvl').value;
+            tiles.forEach(t => {
+                const matchT = (tVal === 'all' || t.dataset.name === tVal);
+                const matchL = (lVal === 'all' || t.dataset.lvl === lVal);
+                t.classList.remove('highlight', 'dimmed');
+                if (tVal === 'all' && lVal === 'all') {} 
+                else if (matchT && matchL) t.classList.add('highlight');
+                else t.classList.add('dimmed');
+            });
+        }
+        function resetFilter() { document.getElementById('selType').value = 'all'; document.getElementById('selLvl').value = 'all'; filterMap(); }
+    <\/script>
+</body>
+</html>`;
+        
+        const blob = new Blob([html], {type: 'text/html'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'map.html';
+        a.click();
+        log("Map als HTML exportiert.");
+    }
+
+    // --- DEBUG & LOGGING ---
+    function toggleDebug(btn) {
+        debugMode = !debugMode;
+        document.getElementById('mainWrap').classList.toggle('debug-active', debugMode);
+        btn.classList.toggle('active', debugMode);
+    }
+    
+    function log(msg, type="info") {
+        if(!debugMode && type !== "err") return;
+        const panel = document.getElementById('debugLog');
+        const entry = document.createElement('div');
+        entry.className = `log-entry log-${type}`;
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        panel.prepend(entry);
+        if(panel.children.length > 50) panel.lastChild.remove();
+    }
+
+    // --- CSV LOGIC ---
+    function exportCSV() {
+        if(mapLines.length === 0) return alert("Leer!");
+        let csv = "";
+        parsedTiles.forEach(t => {
+            let size = "small"; if(t.h === 73) size = "large"; if(t.w === 98) size = "capitol";
+            let name = t.raw.match(/-\s(.*?)\sLv\./)?.[1] || "Objekt";
+            let lvl = t.raw.match(/(?:Lv\.?|lv\.)\s*(\d+)/)?.[1] || "1";
+            let corr = t.raw.match(/Verderber\s*Lv\.\s*(\d+)/i)?.[1] || "";
+            csv += `${t.x};;${t.y};;${size};;${name};;${lvl};;${corr};;${t.owner};;${t.color}\n`;
+        });
+        document.getElementById('ioData').value = csv;
+        navigator.clipboard.writeText(csv).then(() => alert("CSV kopiert!"));
+        log("CSV Export generiert.");
+    }
+
+    function importCSV() {
+        const raw = document.getElementById('ioData').value;
+        if(!raw.includes(';;')) return alert("Fehler: Kein CSV Format (;;)");
+        const lines = raw.trim().split('\n');
+        mapLines = [];
+        lines.forEach(row => {
+            const cols = row.split(';;');
+            if(cols.length < 5) return;
+            const [x, y, size, name, lvl, corr, owner, color] = cols;
+            let sizeText = "kleine Kachel 49 x 49felder";
+            if(size === 'large') sizeText = "grosse Kachel 49 x 73 felder";
+            if(size === 'capitol') sizeText = "Kapitol 98 x 98";
+            let inf = (parseInt(lvl) >= 7) ? "2.000.000" : "5.000";
+            let corrStr = corr ? `- Verderber Lv. ${corr}` : "";
+            let line = `x ${x} y ${y} ${sizeText} - ${name} Lv. ${lvl} - Einflusspunkte + ${inf} ${corrStr}`;
+            if(owner && owner !== 'undefined' && owner !== '') line += ` | Owner: ${owner}`;
+            if(color && color !== 'undefined' && color !== '') line += ` | Color: ${color}`;
+            mapLines.push(line);
+        });
+        deselect(false); render(); alert("CSV Importiert!");
+    }
+
+    // --- STANDARD IMPORT ---
+    function importData() {
+        const raw = document.getElementById('ioData').value;
+        if(!raw.trim()) return alert("Keine Daten!");
+        mapLines = raw.trim().split('\n').map(l=>l.trim()).filter(l=>l);
+        document.getElementById('ioData').value = '';
+        deselect(false); render();
+        const conflicts = parsedTiles.filter(t => t.conflict).length;
+        log(`Import: ${mapLines.length} Zeilen. ${conflicts} Konflikte.`);
+    }
+
+    function exportData() {
+        const code = mapLines.join('\n');
+        document.getElementById('ioData').value = code;
+        navigator.clipboard.writeText(code).then(() => alert("Kopiert!"));
+    }
+
+    function clearMap() { if(confirm("Leeren?")) { mapLines=[]; deselect(false); render(); log("Karte geleert."); } }
+
+    // --- PARSER ---
+    function parseLine(line, index) {
+        const coord = line.match(/x\s*(\d+)\s*y\s*(\d+)/i);
+        if(!coord) return null;
+        const x = parseInt(coord[1]), y = parseInt(coord[2]);
+        let w=49, h=49, type='base';
+        if(line.includes('grosse')) h=73;
+        if(line.includes('Kapitol')) { w=98; h=98; type='capitol'; }
+        else if(!line.includes('Militär')) type='city';
+        const ownerMatch = line.match(/\|\s*Owner:\s*(.*?)\s*(?:\||$)/);
+        const colorMatch = line.match(/\|\s*Color:\s*(.*?)\s*(?:\||$)/);
+        return { x, y, w, h, type, raw: line, index, owner: ownerMatch?ownerMatch[1]:'', color: colorMatch?colorMatch[1]:'', conflict: false };
+    }
+
+    function generateLine() {
+        const x = parseInt(document.getElementById('iX').value)||0, y = parseInt(document.getElementById('iY').value)||0;
+        const size = document.getElementById('iSize').value, name = document.getElementById('iName').value, lvl = document.getElementById('iLvl').value, corr = document.getElementById('iCorr').value;
+        const owner = document.getElementById('iOwner').value, color = document.getElementById('iColor').value;
+        let sizeText = "kleine Kachel 49 x 49felder";
+        if(size === 'large') sizeText = "grosse Kachel 49 x 73 felder";
+        if(size === 'capitol') sizeText = "Kapitol 98 x 98";
+        let inf = "5.000"; if(lvl >= 7) inf = "2.000.000";
+        let corrStr = corr ? `- Verderber Lv. ${corr}` : "";
+        let line = `x ${x} y ${y} ${sizeText} - ${name} Lv. ${lvl} - Einflusspunkte + ${inf} ${corrStr}`;
+        if(owner) line += ` | Owner: ${owner}`;
+        if(color && color !== '#000000') line += ` | Color: ${color}`;
+        return line;
+    }
+
+    // --- COLLISION (Soft) ---
+    function checkConflicts() {
+        parsedTiles.forEach(t => t.conflict = false);
+        let count = 0; const TOL = 1;
+        for(let i=0; i<parsedTiles.length; i++) {
+            let t1 = parsedTiles[i];
+            let l1 = (t1.x - t1.w/2)+TOL, r1 = (t1.x + t1.w/2)-TOL, b1 = (t1.y - t1.h/2)+TOL, tp1 = (t1.y + t1.h/2)-TOL;
+            for(let j=i+1; j<parsedTiles.length; j++) {
+                let t2 = parsedTiles[j];
+                let l2 = (t2.x - t2.w/2)+TOL, r2 = (t2.x + t2.w/2)-TOL, b2 = (t2.y - t2.h/2)+TOL, tp2 = (t2.y + t2.h/2)-TOL;
+                if (l1 < r2 && r1 > l2 && b1 < tp2 && tp1 > b2) {
+                    t1.conflict = true; t2.conflict = true; count++;
+                    log(`Konflikt: #${i+1} und #${j+1}`, "warn");
+                }
+            }
+        }
+        const cEl = document.getElementById('conflictCount');
+        if(count > 0) { cEl.textContent = `⚠️ ${count} Konflikte`; cEl.className = 'has-error'; } 
+        else { cEl.textContent = 'OK'; cEl.className = ''; }
+    }
+
+    // --- RENDER ---
+    function render() {
+        const mapEl = document.getElementById('map'), listEl = document.getElementById('list'), guides = mapEl.querySelectorAll('.snap-line');
+        mapEl.innerHTML = ''; listEl.innerHTML = '';
+        guides.forEach(g => mapEl.appendChild(g));
+        parsedTiles = mapLines.map((l, i) => parseLine(l, i)).filter(x => x);
+        checkConflicts();
+
+        parsedTiles.forEach((d, idx) => {
+            const div = document.createElement('div');
+            div.className = `map-tile c-${d.type}`;
+            if(idx === selectedIdx) div.classList.add('is-selected');
+            if(d.conflict) div.classList.add('is-collision');
+            if(d.color) { div.style.backgroundColor = hexToRgba(d.color, 0.6); div.style.borderColor = d.color; }
+            div.style.left = (d.x/10)+'%'; div.style.bottom = (d.y/10)+'%';
+            div.style.width = `calc(${d.w/10}% - 0.15%)`; div.style.height = `calc(${d.h/10}% - 0.15%)`;
+            let label = d.raw.match(/-\s(.*?)\sLv\./)?.[1] || 'Objekt';
+            div.innerHTML = `<div>${label}<br>Lv.${d.raw.match(/Lv\.\s*(\d+)/)?.[1]||''}</div>`;
+            div.onmousedown = (e) => initDrag(e, idx);
+            div.ontouchstart = (e) => initDrag(e, idx);
+            div.onclick = (e) => e.stopPropagation();
+            mapEl.appendChild(div);
+
+            const item = document.createElement('div');
+            item.className = 'item' + (idx === selectedIdx ? ' active' : '') + (d.conflict ? ' conflict' : '');
+            item.innerHTML = `<div onclick="selectTile(${idx}, event)" style="flex-grow:1"><span style="color:#66fcf1;font-weight:bold">${d.conflict?'⚠️':''} ${idx+1}. ${label}</span> <span style="color:#888;">[${d.x}/${d.y}]</span></div><button class="btn-del" onclick="removeLine(${idx}, event)">✖</button>`;
+            listEl.appendChild(item);
+        });
+    }
+
+    function hexToRgba(hex, alpha) {
+        let c = hex.substring(1).split('');
+        if(c.length==3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+        c = '0x'+c.join('');
+        return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+    }
+
+    function handleMapClick(e) { if (!isDragging && !e.target.closest('.map-tile')) deselect(true); }
+    function deselect(save) {
+        if (selectedIdx !== null && save) mapLines[selectedIdx] = generateLine();
+        selectedIdx = null;
+        document.getElementById('btnAdd').style.display = 'block';
+        document.getElementById('btnSave').style.display = 'none';
+        document.getElementById('btnDeleteMain').style.display = 'none';
+        document.getElementById('btnCancel').style.display = 'none';
+        document.getElementById('infoBox').innerHTML = 'Modus: <b>Neu erstellen</b>';
+        render();
+    }
+    function selectTile(idx, e) {
+        if(e) e.stopPropagation();
+        if(selectedIdx !== null && selectedIdx !== idx) mapLines[selectedIdx] = generateLine();
+        selectedIdx = idx;
+        const d = parsedTiles[idx];
+        document.getElementById('iX').value = d.x;
+        document.getElementById('iY').value = d.y;
+        document.getElementById('iOwner').value = d.owner;
+        document.getElementById('iColor').value = (d.color && d.color.startsWith('#')) ? d.color : '#000000';
+        let sVal = 'small'; if(d.h === 73) sVal = 'large'; if(d.w === 98) sVal = 'capitol';
+        document.getElementById('iSize').value = sVal;
+        const opts = document.getElementById('iName').options;
+        for(let i=0; i<opts.length; i++) if(d.raw.includes(opts[i].value)) { document.getElementById('iName').selectedIndex = i; break; }
+        document.getElementById('iLvl').value = d.raw.match(/Lv\.\s*(\d+)/)?.[1] || 1;
+        document.getElementById('btnAdd').style.display = 'none';
+        document.getElementById('btnSave').style.display = 'block';
+        document.getElementById('btnDeleteMain').style.display = 'block';
+        document.getElementById('btnCancel').style.display = 'block';
+        document.getElementById('infoBox').innerHTML = `Modus: <b>Bearbeiten #${idx+1}</b>`;
+        log(`Selektiert: ${d.x}/${d.y}`);
+        render();
+    }
+    function addNewItem() { mapLines.push(generateLine()); render(); log("Item hinzugefügt"); }
+    function saveAndRelease() { if (selectedIdx !== null) { mapLines[selectedIdx] = generateLine(); deselect(false); log("Gespeichert"); } }
+    function deleteSelected() { if(selectedIdx !== null) removeLine(selectedIdx, null); }
+    function removeLine(idx, e) {
+        if(e) e.stopPropagation();
+        if(confirm("Löschen?")) {
+            mapLines.splice(idx, 1);
+            if(selectedIdx === idx) deselect(false); else if(selectedIdx > idx) selectedIdx--;
+            render(); log("Item gelöscht");
+        }
+    }
+
+    function initDrag(e, idx) {
+        if (selectedIdx !== idx) selectTile(idx, e);
+        e.preventDefault(); isDragging = false; 
+        dragItem = { idx: idx, el: e.target.closest('.map-tile'), data: parsedTiles[idx] };
+        dragItem.el.classList.add('is-dragging');
+        document.addEventListener('mousemove', onDrag); document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchmove', onDrag, {passive: false}); document.addEventListener('touchend', stopDrag);
+        log(`Drag Start: #${idx+1}`);
+    }
+    function onDrag(e) {
+        if(!dragItem) return; e.preventDefault(); isDragging = true;
+        const rect = document.getElementById('map').getBoundingClientRect();
+        const clientX = e.clientX || e.touches[0].clientX; const clientY = e.clientY || e.touches[0].clientY;
+        let rawX = ((clientX - rect.left) / rect.width) * 1000; let rawY = ((rect.bottom - clientY) / rect.height) * 1000;
+        const snapped = applyMagnet(rawX, rawY, dragItem.data.w, dragItem.data.h);
+        dragItem.lastX = snapped.x; dragItem.lastY = snapped.y;
+        dragItem.el.style.left = (snapped.x/10)+'%'; dragItem.el.style.bottom = (snapped.y/10)+'%';
+        updateGuides(snapped.guideX, snapped.guideY);
+        document.getElementById('iX').value = snapped.x; document.getElementById('iY').value = snapped.y;
+    }
+    function applyMagnet(x, y, w, h) {
+        const THRESHOLD = 15;
+        let edges = { l: x - w/2, r: x + w/2, b: y - h/2, t: y + h/2 };
+        let newX = x, newY = y; let guideX = null, guideY = null;
+        if (Math.abs(edges.l - 0) < THRESHOLD) { newX = 0 + w/2; guideX = 0; } else if (Math.abs(edges.r - 1000) < THRESHOLD) { newX = 1000 - w/2; guideX = 1000; }
+        else { for(let t of parsedTiles) { if(t.index === dragItem.idx) continue; let tL = t.x - t.w/2, tR = t.x + t.w/2; if(Math.abs(edges.l - tR) < THRESHOLD) { newX = tR + w/2; guideX = tR; break; } if(Math.abs(edges.r - tL) < THRESHOLD) { newX = tL - w/2; guideX = tL; break; } if(Math.abs(x - t.x) < THRESHOLD) { newX = t.x; guideX = t.x; break; } } }
+        if (Math.abs(edges.b - 0) < THRESHOLD) { newY = 0 + h/2; guideY = 0; } else if (Math.abs(edges.t - 1000) < THRESHOLD) { newY = 1000 - h/2; guideY = 1000; }
+        else { for(let t of parsedTiles) { if(t.index === dragItem.idx) continue; let tB = t.y - t.h/2, tT = t.y + t.h/2; if(Math.abs(edges.b - tT) < THRESHOLD) { newY = tT + h/2; guideY = tT; break; } if(Math.abs(edges.t - tB) < THRESHOLD) { newY = tB - h/2; guideY = tB; break; } if(Math.abs(y - t.y) < THRESHOLD) { newY = t.y; guideY = t.y; break; } } }
+        return { x: Math.round(Math.max(0, Math.min(1000, newX))), y: Math.round(Math.max(0, Math.min(1000, newY))), guideX, guideY };
+    }
+    function updateGuides(x, y) {
+        const gV = document.getElementById('guideV'); const gH = document.getElementById('guideH');
+        if(x !== null) { gV.style.display='block'; gV.style.left=(x/10)+'%'; } else gV.style.display='none';
+        if(y !== null) { gH.style.display='block'; gH.style.bottom=(y/10)+'%'; } else gH.style.display='none';
+    }
+    function stopDrag(e) {
+        if(!dragItem) return;
+        dragItem.el.classList.remove('is-dragging');
+        document.getElementById('guideV').style.display='none'; document.getElementById('guideH').style.display='none';
+        if(dragItem.lastX !== undefined) { document.getElementById('iX').value = dragItem.lastX; document.getElementById('iY').value = dragItem.lastY; saveAndRelease(); }
+        dragItem = null; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', stopDrag);
+        document.removeEventListener('touchmove', onDrag); document.removeEventListener('touchend', stopDrag);
+        setTimeout(() => { isDragging = false; }, 100); log("Drag Ende");
+    }
+    function autoCenterMap() {
+        if(mapLines.length === 0) return alert("Leer!");
+        let minX = 1000, maxX = 0, minY = 1000, maxY = 0;
+        parsedTiles.forEach(d => { minX = Math.min(minX, d.x - d.w/2); maxX = Math.max(maxX, d.x + d.w/2); minY = Math.min(minY, d.y - d.h/2); maxY = Math.max(maxY, d.y + d.h/2); });
+        const dX = 500 - (minX + maxX)/2; const dY = 500 - (minY + maxY)/2;
+        mapLines = mapLines.map(l => { const d = parseLine(l, 0); if(!d) return l; return l.replace(/x\s*\d+\s*y\s*\d+/, `x ${Math.round(d.x+dX)} y ${Math.round(d.y+dY)}`); });
+        render(); exportData(); log("Auto-Center ausgeführt.");
+    }
+    init();
+</script>
+</body>
+</html>
