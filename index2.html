@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>War Command V88.2 (Public Release)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        /* --- STYLES (V88 BASE) --- */
+        :root { --bg: #0b0c10; --card: #1f2833; --text: #c5c6c7; --cyan: #66fcf1; --blue: #45a29e; --red: #ff4d4d; --green: #6bcB77; --gold: #ffd700; --border: #2d303e; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; padding-bottom: 60px; font-size: 16px; overflow-y: auto; }
+        .wrap { max-width: 1450px; margin: 0 auto; padding: 10px; }
+        .navbar { background: #15161c; border-bottom: 2px solid var(--blue); padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 500; box-shadow: 0 5px 15px rgba(0,0,0,0.5); flex-wrap: wrap; gap: 10px; }
+        .logo { font-weight: bold; letter-spacing: 1px; text-transform: uppercase; display: flex; flex-direction: column; line-height: 1.2; cursor:pointer; }
+        .logo-main { color: var(--cyan); font-size: 1.2rem; }
+        .logo-sub { color: #fff; font-size: 0.8rem; letter-spacing: 3px; }
+        .menu { display: flex; gap: 5px; flex-wrap: wrap; }
+        .m-btn { background: transparent; border: 1px solid #444; color: #888; padding: 6px 12px; border-radius: 20px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
+        .m-btn.active { background: var(--blue); color: #000; border-color: var(--cyan); font-weight: bold; }
+        .m-btn:hover { border-color: #fff; color: #fff; }
+        .btn-bagger { background: linear-gradient(45deg, #ff4d4d, #cc0000); color: white; border: 1px solid #ff9999; font-weight: bold; box-shadow: 0 0 10px #ff0000; animation: pulse 2s infinite; }
+        .btn-bagger:active { transform: scale(0.95); background: #fff; color: red; }
+        .btn-msg { background: #222; border: 1px solid #444; color: #fff; font-size: 1.2rem; padding: 3px 10px; }
+        .btn-msg:hover { background: #333; border-color: var(--cyan); }
+        .btn-r4-msg { border-color: var(--gold); color: var(--gold); }
+        .btn-del { background: #331010; color: var(--red); border: 1px solid var(--red); padding: 5px 10px; font-size: 0.8rem; cursor: pointer; border-radius: 4px; }
+        .btn-go { background: var(--blue); color: #000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-go:hover { background: var(--cyan); }
+        .btn-backup { background: #d63384; color: #fff; margin-left: 10px; }
+        .btn-restore { background: #e0a800; color: #000; margin-left: 5px; }
+        .card-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); display: block; width: 100%; box-sizing: border-box; overflow: visible !important; }
+        .head { border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .title { margin: 0; color: #fff; font-weight: 300; letter-spacing: 1px; font-size: 1rem; }
+        .timer-grid-layout { display: flex; flex-direction: column; gap: 15px; }
+        .timer-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; align-items: end; }
+        input, select, textarea { background: #0f1015; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; width: 100%; box-sizing: border-box; font-family: inherit; font-size: 16px; }
+        .map-frame { width: 100%; aspect-ratio: 1/1; margin: 0 auto; position: relative; background: #050505; border: 2px solid #444; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 5% 5%; box-shadow: 0 0 50px rgba(0,0,0,0.5); overflow: hidden; }
+        .map-tile { position: absolute; border: 1px solid rgba(255,255,255,0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 0.55em; line-height: 1.1; color: #fff; text-align: center; box-sizing: border-box; overflow: hidden; text-shadow: 0 1px 2px #000; transition: all 0.2s ease; cursor: pointer; transform: translate(-50%, 50%); z-index: 10; }
+        .map-tile:hover { z-index: 100; border-color: #fff; box-shadow: 0 0 10px #fff; transform: translate(-50%, 50%) scale(1.2); }
+        .c-base { background: rgba(80, 80, 80, 0.6); }
+        .c-city { background: rgba(69, 162, 158, 0.6); border-color: #66fcf1; }
+        .c-capitol { background: rgba(255, 215, 0, 0.4); border-color: gold; }
+        .map-tile.active-timer { border-width: 2px; border-style: solid; animation: pulse-border 2s infinite; }
+        .map-tile.active-timer::after { content: "⚔️"; font-size: 1.5em; position: absolute; }
+        .tt { position: fixed; background: rgba(20, 20, 30, 0.95); border: 1px solid #66fcf1; padding: 10px; border-radius: 6px; pointer-events: none; display: none; z-index: 3000; font-size: 14px; box-shadow: 0 5px 15px #000; white-space: nowrap; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; } 
+        th { text-align: left; color: var(--blue); padding: 10px; border-bottom: 1px solid #444; font-size: 0.75rem; } 
+        td { padding: 10px 8px; border-bottom: 1px solid #2a2a35; vertical-align: middle; font-size: 0.9rem; }
+        .chart-con { height: 500px; background: #15161d; padding: 10px; border-radius: 10px; }
+        .pie-con { height: 550px; position: relative; margin-top: 20px; }
+        .u-item { background:#15161c; padding:10px; border-radius:6px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center; width: 100%; box-sizing: border-box; margin-bottom:5px; }
+        .role-sel { background:#222; border:1px solid #555; padding:2px; font-size:0.8rem; border-radius:4px; margin-left:10px; width:50px; } 
+        .tag-ok { background: rgba(107, 203, 119, 0.1); color: var(--green); padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+        .tag-bad { background: rgba(255, 77, 77, 0.1); color: var(--red); padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+        .act-conquer { color: #ff6b6b; font-weight: bold; } .act-abandon { color: #888; font-style: italic; } .act-protect { color: #4d96ff; font-weight: bold; } .act-defend { color: #ff9f43; font-weight: bold; text-transform: uppercase; } .act-extend_protect { color: #66fcf1; font-weight: bold; }
+        .trend-up { color: var(--green); font-weight: bold; } .trend-down { color: var(--red); font-weight: bold; } .trend-flat { color: #888; }
+        .view { display: none; } .view.show { display: block; animation: fade 0.3s; }
+        .hide-mob { display: block; }
+        .toggle-group { display: flex; gap: 15px; margin-bottom: 5px; }
+        .toggle-opt { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 0.9rem; } .toggle-opt input { width: auto; margin: 0; }
+        .st-n { background: transparent; border: none; border-bottom: 1px solid #444; color: var(--gold); width: 100%; font-weight: bold; text-align: center; } 
+        .st-p { background: #000; border: 1px solid #444; color: #fff; width: 80px; text-align: right; padding: 5px; font-family: monospace; }
+        .is-dirty { border-color: var(--gold) !important; background: #2a2a20 !important; }
+        .autocomplete-wrapper { position: relative; width: 100%; }
+        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; z-index: 2500; background: #222; border: 1px solid #444; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 10px 20px #000; }
+        .autocomplete-item { padding: 8px; cursor: pointer; border-bottom: 1px solid #333; color: #ccc; background:#222; }
+        .autocomplete-item:hover { background: var(--blue); color: #000; }
+        .edit-icon { cursor: pointer; margin-left: 5px; opacity: 0.5; font-size: 0.8rem; }
+        .edit-icon:hover { opacity: 1; transform: scale(1.2); }
+        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:2000; justify-content:center; align-items:center; } 
+        .m-box { background: var(--card); padding: 30px; border-radius: 10px; border: 1px solid var(--cyan); width: 90%; max-width: 300px; text-align: center; }
+        
+        @media (max-width: 768px) { .hide-mob { display: none; } .navbar { flex-direction: column; align-items: stretch; } .menu { justify-content: center; width: 100%; } .m-btn { flex: 1; text-align: center; } .form-grid { grid-template-columns: 1fr 1fr; } .timer-row { grid-template-columns: 1fr; } }
+        @keyframes fade { from {opacity:0} to {opacity:1} } @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } } @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); } }
+
+        /* --- V88 ZUSÄTZE --- */
+        .ai-status-msg { font-size: 0.9rem; color: var(--gold); margin-top: 5px; font-weight: bold; }
+        .ai-hint { font-size: 0.85rem; color: #888; margin-top: 10px; line-height: 1.4; border-top: 1px solid #333; padding-top: 10px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; }
+        .debug-inline { background: #111; border: 1px solid #444; padding: 10px; border-radius: 6px; margin-top: 20px; display: none; }
+        .debug-log { background: #000; color: #0f0; font-family: monospace; height: 400px; max-height: 60vh; overflow-y: scroll; padding: 10px; font-size: 13px; border: 1px solid #333; white-space: pre-wrap; margin-top: 5px; }
+        .filter-bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px; background:#15161c; padding:10px; border-radius:6px; }
+        .filter-inp { width:auto; flex:1; min-width:150px; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <div class="logo" onclick="app.nav('dash')">
+        <div class="logo-main">LAST WAR</div>
+        <div class="logo-sub">WAR COMMAND</div>
+    </div>
+    <div class="menu">
+        <button class="m-btn active" onclick="app.nav('dash')">Karte</button>
+        <button class="m-btn" onclick="app.nav('stats')">Statistik</button>
+        <button class="m-btn" id="nDuel" onclick="app.nav('duel')" style="display:none">VS</button>
+        <button class="m-btn" id="nMarsh" onclick="app.nav('marsh')" style="display:none">Marshall</button>
+        <button class="m-btn" id="nImp" onclick="app.nav('imp')" style="display:none">Import</button>
+        <button class="m-btn" id="nAdm" onclick="app.nav('adm')" style="display:none">Admin</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:5px">
+        <button id="navAllyMsg" class="m-btn btn-msg" onclick="app.openMsg('allianz')" style="display:none" title="Allianz Nachricht">📢</button>
+        <button id="navR4Msg" class="m-btn btn-msg btn-r4-msg" onclick="app.openMsg('r4')" style="display:none" title="R4 Nachricht">🔒</button>
+        <button class="m-btn btn-bagger" onclick="app.bagger()">🚜 BAGGER</button>
+        <span id="uStat" class="usr hide-mob">Gast</span>
+        <button id="bOut" class="m-btn" onclick="app.out()" style="display:none; padding:5px 10px">X</button>
+    </div>
+</div>
+
+<div class="tt" id="tooltip"></div>
+<div class="wrap">
+    <div id="errorBox"></div>
+    
+    <div id="v-dash" class="view show">
+        <div class="card-box">
+            <div class="head"><h3 class="title">📋 Aktive Operationen</h3></div>
+            <div style="overflow-x:auto"><table id="tTimer"><thead><tr><th>Srv</th><th>Ziel</th><th>Allianz</th><th>Auftrag</th><th>Pos</th><th>Ende</th><th>Rest</th><th></th></tr></thead><tbody></tbody></table></div>
+            <div id="noData" style="text-align:center; padding:20px; color:#666">Keine aktiven Timer</div>
+        </div>
+        <div id="boxAdm" class="card-box" style="display:none; border-color:var(--cyan); margin-bottom: 20px;">
+            <div class="head"><h3 class="title" style="color:var(--cyan)">⚡ Timer Starten</h3></div>
+            <div class="timer-grid-layout">
+                <div class="timer-row">
+                    <div><label>SERVER</label><select id="iSrv" onchange="app.sync(this.value);"></select></div>
+                    <div><label>ZIEL</label><input id="iName" placeholder="Spieler/Ziel"></div>
+                    <div><label>ALLIANZ</label><div class="autocomplete-wrapper"><input id="iAlly" placeholder="Allianz suchen (Alle Server)" oninput="app.filterAlly()"><div id="ally-list" class="autocomplete-list"></div></div></div>
+                    <div><label>BEFEHL</label><select id="iAct"><option value="conquer">⚔️ Erobern</option><option value="abandon">🏳️ Aufgeben</option><option value="protect">🛡️ Schutz</option><option value="extend_protect">🛡️ Schutz verlängern</option><option value="defend">🔥 Kampf</option></select></div>
+                </div>
+                <div class="timer-row">
+                    <div><label>GRID</label><div style="display:flex;gap:2px"><select id="iL" onchange="app.calcXY()"></select><select id="iN" onchange="app.calcXY()"></select></div></div>
+                    <div><label>X / Y</label><div style="display:flex;gap:2px"><input id="iX" placeholder="X"><input id="iY" placeholder="Y"></div></div>
+                    
+                    <div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <label>FARBE</label>
+                            <label style="font-size:0.8rem; cursor:pointer"><input type="checkbox" id="iColorDef" checked onchange="app.toggleColorInput()"> Standard</label>
+                        </div>
+                        <input type="color" id="iColor" value="#ff4d4d" style="width:100%; height:42px; padding:0; cursor:pointer; display:none; border:1px solid #444;">
+                        <div id="iColorFake" style="width:100%; height:42px; background:#222; border:1px solid #444; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#666; font-size:0.8rem;">Rot (Standard)</div>
+                    </div>
+
+                    <div><label>DAUER</label><div style="display:flex;gap:2px"><input type="number" id="iD" value="0" placeholder="T"><input type="number" id="iH" value="24" placeholder="H"><input type="number" id="iM" value="0" placeholder="M"></div></div>
+                    <div><label>&nbsp;</label><button class="btn-go" style="width:100%" onclick="app.addT()">Start</button></div>
+                </div>
+            </div>
+        </div>
+        <div class="card-box">
+            <div class="head"><h3 class="title">🗺️ Karte</h3><select id="vSrv" onchange="app.sync(this.value)" style="width:auto; padding:5px"></select></div>
+            <div class="map-frame" id="mapContainer"></div>
+        </div>
+    </div>
+
+    <div id="v-stats" class="view">
+        <div class="card-box">
+            <div class="head"><h3 class="title">📊 Power (Mrd/G)</h3></div>
+            <div class="chart-con"><canvas id="chart"></canvas></div>
+        </div>
+        <div class="card-box">
+            <div class="head"><h3 class="title">📝 Eingabe</h3><button id="bSave" class="btn-go" onclick="app.saveS()" style="display:none">Speichern</button></div>
+            <div id="statAdm" style="display:none; overflow-x:auto;"><table style="min-width:1000px"><thead><tr id="thStat"><th>#</th></tr></thead><tbody id="tbStat"></tbody></table></div>
+            <div id="statGst" style="text-align:center; padding:20px; color:#666">Login erforderlich</div>
+        </div>
+    </div>
+    
+    <div id="v-duel" class="view">
+        <div class="card-box">
+            <div class="head">
+                <h3 class="title">⚔️ Allianz Duell (VS)</h3>
+                <div style="display:flex; gap:10px; align-items:center">
+                     <label style="font-size:0.8rem; cursor:pointer"><input type="checkbox" id="chkSaveWeek" onchange="app.toggleSaveWeek()"> 🐷 Sparwoche</label>
+                     <select id="selDuelW" onchange="app.renderEventData('duel', this.value)" style="width:auto; padding:5px;"></select>
+                </div>
+            </div>
+            <div class="filter-bar" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px; background:#15161c; padding:10px; border-radius:6px;">
+                <input id="searchDuel" class="filter-inp" placeholder="🔍 Spieler suchen..." oninput="app.renderEventData('duel')" style="width:auto; flex:1; min-width:150px;">
+                <select id="filterDuelRange" class="filter-inp" onchange="app.renderEventData('duel')" style="width:auto; flex:1; min-width:150px;">
+                    <option value="all">Alle Punkte</option>
+                    <option value="0-40000">0 - 40.000 (Ø)</option>
+                    <option value="40001-150000">40.001 - 150.000 (Ø)</option>
+                    <option value="150001-540000">150.001 - 540.000 (Ø)</option>
+                    <option value="540001-660000">540.001 - 660.000 (Ø)</option>
+                    <option value="660001-1000000">660.001 - 1.000.000 (Ø)</option>
+                    <option value="1000001-2300000">1.000.001 - 2.300.000 (Ø)</option>
+                    <option value="2300001-2600000">2.300.001 - 2.600.000 (Ø)</option>
+                    <option value="2600001-3600000">2.600.001 - 3.600.000 (Ø)</option>
+                    <option value="3600001-7200000">3.600.001 - 7.200.000 (Ø)</option>
+                    <option value="7200001-999999999">> 7.200.000 (Ø)</option>
+                </select>
+            </div>
+            <div style="overflow-x:auto;">
+                <table id="tDuel"><thead><tr><th style="width:30px">Vgl</th><th style="width:50px">Rank</th><th>Name</th><th>Score</th><th style="color:#aaa;font-size:0.7rem">Anteil</th><th style="color:#aaa;font-size:0.7rem">∑ %</th><th>Trend</th><th style="width:100px">History</th></tr></thead><tbody></tbody></table>
+            </div>
+            <div class="pie-con"><canvas id="chartDuel"></canvas></div>
+            <div class="chart-con" style="margin-top:20px"><h4 style="text-align:center;color:#fff;margin:0">📈 Punkte Verlauf (Max 20 Spieler)</h4><canvas id="chartDuelLine"></canvas></div>
+        </div>
+    </div>
+
+    <div id="v-marsh" class="view">
+        <div class="card-box">
+            <div class="head">
+                <h3 class="title">🎖️ Marshall Guard</h3>
+                <select id="selMarshW" onchange="app.renderEventData('marshall', this.value)" style="width:auto; padding:5px;"></select>
+            </div>
+            <div class="filter-bar" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px; background:#15161c; padding:10px; border-radius:6px;">
+                <input id="searchMarsh" class="filter-inp" placeholder="🔍 Spieler suchen..." oninput="app.renderEventData('marshall')" style="width:auto; flex:1; min-width:150px;">
+            </div>
+            <div style="overflow-x:auto;">
+                <table id="tMarsh"><thead><tr><th style="width:50px">Rank</th><th>Name</th><th>Score</th><th style="color:#aaa;font-size:0.7rem">Anteil</th><th style="color:#aaa;font-size:0.7rem">∑ %</th><th>Trend</th><th style="width:100px">History</th></tr></thead><tbody></tbody></table>
+            </div>
+            <div class="pie-con"><canvas id="chartMarsh"></canvas></div>
+            <div class="chart-con" style="margin-top:20px; height:800px"><h4 style="text-align:center;color:#fff;margin:0">📊 Teilnahme & Durchschnitts-Schaden (Gesamt)</h4><canvas id="chartMarshStats"></canvas></div>
+        </div>
+    </div>
+
+    <div id="v-imp" class="view">
+        <div class="card-box">
+            <div class="head"><h3 class="title">📥 Daten Import</h3></div>
+            <div class="form-grid" style="margin-bottom:20px; background:#15161c; padding:20px; border-radius:10px; display:block;">
+                <div style="margin-bottom:10px"><label>Event Typ</label><select id="impType"><option value="duel">⚔️ Allianz Duell</option><option value="marshall">🎖️ Marshall Guard</option></select></div>
+                <div style="margin-bottom:10px">
+                    <label>Datum / Woche</label>
+                    <div class="toggle-group"><label class="toggle-opt"><input type="radio" name="dMode" value="kw" checked onchange="app.togInp()"> KW</label><label class="toggle-opt"><input type="radio" name="dMode" value="date" onchange="app.togInp()"> Datum</label></div>
+                    <select id="impKwList" style="display:block"></select>
+                    <input type="date" id="impDate" style="display:none">
+                    <button class="btn-del" style="margin-top:5px; width:100%; background:#500" onclick="app.delData()">🗑️ Woche Löschen</button>
+                </div>
+                
+                <div style="border:1px dashed var(--cyan); padding:20px; border-radius:10px; margin-bottom:20px; background: rgba(102, 252, 241, 0.05);">
+                    <label style="color:var(--cyan); font-weight:bold; display:block; margin-bottom:10px;">🤖 AI Screenshot Batch-Scan</label>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+                        <div>
+                            <label style="font-size:0.75rem; color:#888;">Gemini API Key</label>
+                            <input type="password" id="aiKey" placeholder="Dein Gemini Key..." value="">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; color:#888;">KI Modell</label>
+                            <div style="display:flex; gap:5px;">
+                                <select id="aiModel" style="flex:1;">
+                                    <option value="gemini-flash-latest">gemini-flash-latest (Empfohlen)</option>
+                                    <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                </select>
+                                <button class="m-btn" onclick="app.manualUpdateModels()" title="Liste via API aktualisieren">🔄</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <label style="font-size:0.75rem; color:#888;">Screenshots auswählen (Mehrere möglich)</label>
+                    <input type="file" id="aiFile" accept="image/*" multiple onchange="app.runBatchAI(this)" style="padding:5px;">
+                    
+                    <div id="aiStatus" class="ai-status-msg">Bereit für Scan...</div>
+                    
+                    <div class="ai-hint">
+                        <strong>💡 Anleitung:</strong> Wähle einen oder mehrere Screenshots deiner Rangliste aus. Die KI erkennt Namen und Punkte automatisch.
+                    </div>
+                </div>
+
+                <div><label>CSV Daten (Name ;;; Score)</label><textarea id="impCsv" rows="10" placeholder="Player1 ;;; 1000000"></textarea></div>
+                <div style="margin-top:10px"><button class="btn-go" style="width:100%" onclick="app.impData()">Daten Importieren</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="v-adm" class="view">
+        <div class="card-box">
+            <div class="head">
+                <h3 class="title">Verwaltung</h3>
+                <input type="file" id="restoreFile" style="display:none" onchange="app.uploadRestore()">
+                <div style="display:flex;gap:5px"><button class="btn-go btn-restore" onclick="app.triggerRestore()">♻️ Restore</button><button class="btn-go btn-backup" onclick="window.location.href='api.php?action=backup_db'">💾 Backup</button></div>
+            </div>
+            
+            <div style="background:#15161c; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #333;">
+                <h4 style="color:var(--cyan); margin-top:0;">🛠️ System-Diagnose</h4>
+                <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+                    <button class="m-btn" onclick="app.toggleDebug()">Konsole Öffnen/Schließen</button>
+                    <button class="m-btn" onclick="debug.checkDB()">💾 DB Check</button>
+                    <button class="m-btn" onclick="debug.diagnoseMap()">🔍 Map Check</button>
+                    <button class="m-btn" onclick="debug.clearLog()">🧹 Log leeren</button>
+                </div>
+                <div id="debugSection" class="debug-inline">
+                    <div id="debugLog" class="debug-log">Warte auf Logs...</div>
+                </div>
+            </div>
+
+            <div style="background:#15161c; padding:15px; border-radius:8px; margin-bottom:20px;">
+                <h4 style="color:var(--cyan);margin-top:0">⚙️ Webhooks</h4>
+                <div style="display:grid;gap:10px">
+                    <div><label style="font-size:0.8rem;color:#888">MAIN (Timer)</label><input id="setWebhook" style="width:100%" placeholder="Lade..."></div>
+                    <div><label style="font-size:0.8rem;color:#888">BAGGER</label><input id="setBagger" style="width:100%" placeholder="Lade..."></div>
+                    <div><label style="font-size:0.8rem;color:#888">ALLIANZ NACHRICHT</label><input id="setAllianz" style="width:100%" placeholder="Lade..."></div>
+                    <div><label style="font-size:0.8rem;color:#888">R4 NACHRICHT</label><input id="setR4" style="width:100%" placeholder="Lade..."></div>
+                    <button class="btn-go" onclick="app.saveSet()">Speichern</button>
+                </div>
+            </div>
+            <div style="background:#15161c; padding:15px; border-radius:8px; margin-bottom:20px; display:grid; grid-template-columns: 1fr 1fr auto auto; gap:10px;">
+                <input id="nU" placeholder="User"><input id="nP" type="password" placeholder="Pass"><select id="nR" style="width:80px"><option>R1</option><option>R2</option><option>R3</option><option>R4</option><option>R5</option></select><button class="btn-go" onclick="app.mkU()">Add</button>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px">
+                <div><h4>Server</h4><div style="display:flex; gap:5px"><input id="nS" placeholder="ID" style="width:80px"><button class="btn-go" onclick="app.mkS()">+</button><button class="btn-del" onclick="app.rmS()">-</button></div></div>
+                <div><h4>User</h4><div id="lU" style="display:flex;flex-direction:column;gap:5px;min-height:100px;">Lade...</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="m-log" class="modal"><div class="m-box"><h2 style="color:var(--cyan)">Login</h2><input id="loginUser" placeholder="User" style="margin-bottom:10px"><input id="loginPass" type="password" placeholder="Pass"><br><br><button class="btn-go" style="width:100%" onclick="app.login()">Go</button><br><br><button style="background:transparent; border:none; color:#666" onclick="app.modal()">Close</button></div></div>
+<div id="m-pw" class="modal"><div class="m-box"><h2>Password</h2><input id="pO" placeholder="Old" style="margin-bottom:10px"><input id="pN" placeholder="New"><br><br><button class="btn-go" style="width:100%" onclick="app.chgP()">Save</button><br><br><button style="background:transparent; border:none; color:#666" onclick="app.modal()">Close</button></div></div>
+<div id="m-edit-player" class="modal"><div class="m-box"><h3 style="color:var(--cyan)">Spieler umbenennen</h3><div class="autocomplete-wrapper"><input id="editPlName" placeholder="Neuer Name..." oninput="app.filterNames()"><div id="ac-list" class="autocomplete-list"></div></div><input type="hidden" id="editPlId"><input type="hidden" id="editPlType"><br><br><button class="btn-go" onclick="app.savePl()">Speichern</button><button class="btn-del" style="background:transparent;border:none" onclick="document.getElementById('m-edit-player').style.display='none'">Abbruch</button></div></div>
+<div id="m-msg" class="modal"><div class="m-box" style="max-width:400px"><h3 id="msgTitle" style="color:var(--cyan)">Nachricht</h3><textarea id="msgText" rows="5" placeholder="Nachricht eingeben..." style="width:100%;margin-bottom:10px"></textarea><input type="hidden" id="msgType"><button class="btn-go" onclick="app.sendMsg()">Senden (Löschung in 30min)</button><br><br><button class="btn-del" style="background:transparent;border:none" onclick="document.getElementById('m-msg').style.display='none'">Abbruch</button></div></div>
+<div style="position:fixed; bottom:20px; right:20px; font-size:24px; cursor:pointer;" onclick="app.modal('log')">🔒</div>
+
+<script>
+    // --- GLOBAL ERROR HANDLER ---
+    window.onerror = function(msg, url, line, col, error) {
+        if(typeof debug !== 'undefined') debug.log(`CRITICAL: ${msg} (${line})`, 'error');
+        return false;
+    };
+
+    const debug = {
+        log: function(msg, type='info') {
+            const l = document.getElementById('debugLog');
+            if(!l) return;
+            const t = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff4d4d' : (type === 'success' ? '#0f0' : '#ccc');
+            l.innerHTML += `<div style="color:${color}">[${t}] ${msg}</div>`;
+            l.scrollTop = l.scrollHeight;
+        },
+        clearLog: function() { if(document.getElementById('debugLog')) document.getElementById('debugLog').innerHTML = ''; },
+        checkDB: async function() {
+            this.log("Starte DB Check...");
+            try {
+                const r = await fetch('api.php?action=debug_check&t=' + Date.now());
+                const j = await r.json();
+                this.log("DB Response: " + JSON.stringify(j), j.status === 'success' ? 'success' : 'error');
+            } catch(e) { this.log("DB Check Fehler: " + e.message, 'error'); }
+        },
+        diagnoseMap: function() {
+            this.log("--- MAP DIAGNOSE ---");
+            const hasData = (window.staticMapData && window.staticMapData.length > 0);
+            this.log(`Statische Kartendaten gefunden: ${hasData} (${hasData ? window.staticMapData.length : 0} Zeilen)`);
+            if(!hasData) this.log("FEHLER: staticMapData ist leer!", 'error');
+            try { app.renderMap(); this.log("Render Funktion ausgeführt."); } catch(e) { this.log("Render Error: " + e.message, 'error'); }
+        }
+    };
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        if(typeof Chart!=='undefined'&&typeof ChartDataLabels!=='undefined') Chart.register(ChartDataLabels);
+        const userLang = navigator.language || navigator.userLanguage; 
+        const lang = userLang.startsWith('de') ? 'de' : 'en';
+        const txt = {
+            de: { nav_map:"Karte", nav_stats:"Statistik", tit_timers:"📋 Aktive Operationen", tit_start:"⚡ Timer Starten", tit_map:"🗺️ Karte", tit_power:"📊 Power (Mrd/G)", tit_input:"📝 Eingabe", msg_no_timer:"Keine aktiven Timer", msg_login:"Login erforderlich", lbl_srv:"SERVER", lbl_name:"ZIEL", lbl_dur:"DAUER", lbl_act:"BEFEHL", btn_start:"Start", btn_save:"Speichern", th_srv:"Srv", th_name:"Ziel", th_act:"Auftrag", th_pos:"Pos", th_end:"Ende", th_rem:"Rest", srv_pre:"Server " },
+            en: { nav_map:"Map", nav_stats:"Stats", tit_timers:"📋 Active Ops", tit_start:"⚡ Start Timer", tit_map:"🗺️ Map", tit_power:"📊 Power (Bn/G)", tit_input:"📝 Input", msg_no_timer:"No active timers", msg_login:"Login required", lbl_srv:"SERVER", lbl_name:"TARGET", lbl_dur:"DURATION", lbl_act:"ORDER", btn_start:"Start", btn_save:"Save", th_srv:"Srv", th_name:"Target", th_act:"Order", th_pos:"Pos", th_end:"End", th_rem:"Left", srv_pre:"Server " }
+        };
+        const t = txt[lang];
+
+        const app = {
+            d: {timers:[], servers:[], user:"", auth:false, role:""}, chart: null, 
+            chartEvents: {duel:null, marshall:null, duelLine:null, marshStats:null},
+            l: "ABCDEFGHIJKLMNOPQRST".split(''), 
+            eventData: {duel:[], marshall:[]}, 
+            weekSettings: {}, compareList: [], serverStats: [], allPlayers: [] 
+        };
+
+        app.init = function() {
+            const savedKey = localStorage.getItem('wc_gemini_key');
+            if(savedKey && document.getElementById('aiKey').value === "") {
+                document.getElementById('aiKey').value = savedKey;
+            }
+            document.querySelectorAll('[data-t]').forEach(e => { if(t[e.dataset.t]) e.textContent = t[e.dataset.t]; });
+            this.initKwList(); 
+            const cL=document.getElementById('iL'), cN=document.getElementById('iN');
+            if(cL) this.l.forEach(l=>cL.add(new Option(l,l)));
+            if(cN) for(let i=1;i<=20;i++) cN.add(new Option(i,i));
+            document.getElementById('loginPass').addEventListener('keyup', (e) => { if(e.key === 'Enter') app.login(); });
+            
+            this.load(); 
+            setInterval(()=>this.load(), 30000);
+        };
+        
+        // --- FIXED: ROBUST UTC DATE HANDLING (NO TIMEZONE SHIFT) ---
+        app.getKwFromDate = function(dateStr) { 
+            if(!dateStr) return '-'; 
+            const parts = dateStr.split('-');
+            if(parts.length !== 3) return '-';
+            const date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+            const day = date.getUTCDay() || 7;
+            date.setUTCDate(date.getUTCDate() + 4 - day);
+            const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+            const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1)/7);
+            return `KW ${weekNo} (${date.getUTCFullYear()})`; 
+        };
+
+        app.initKwList = function() { 
+            const el = document.getElementById('impKwList'); 
+            if(!el) return; 
+            const add = (y, w) => el.add(new Option(`KW ${w} (${y})`, `${y}-W${w.toString().padStart(2,'0')}`)); 
+            for(let i=40; i<=52; i++) add(2024, i); 
+            for(let y=2025; y<=2027; y++) { for(let i=1; i<=53; i++) add(y, i); }
+            
+            const now = new Date();
+            const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+            const currentVal = `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2,'0')}`;
+            for(let i=0; i<el.options.length; i++) {
+                if(el.options[i].value === currentVal) {
+                    el.selectedIndex = i;
+                    break;
+                }
+            }
+        };
+
+        app.togInp = function() { const isKw = document.querySelector('input[name="dMode"]:checked').value === 'kw'; document.getElementById('impKwList').style.display = isKw ? 'block' : 'none'; document.getElementById('impDate').style.display = isKw ? 'none' : 'block'; };
+        
+        app.getDateFromKwStr = function(kwStr) { 
+            const [y, w] = kwStr.split('-W').map(Number);
+            const simple = new Date(Date.UTC(y, 0, 1 + (w - 1) * 7));
+            const dow = simple.getUTCDay();
+            const ISOweekStart = simple;
+            if (dow <= 4) ISOweekStart.setUTCDate(simple.getUTCDate() - simple.getUTCDay() + 1);
+            else ISOweekStart.setUTCDate(simple.getUTCDate() + 8 - simple.getUTCDay());
+            return ISOweekStart.toISOString().split('T')[0]; 
+        };
+
+        app.delData = async function() {
+            const type = document.getElementById('impType').value;
+            const kw = document.getElementById('impKwList').value;
+            const mode = document.querySelector('input[name="dMode"]:checked').value;
+            let date = ''; 
+            if(mode === 'date') { date = document.getElementById('impDate').value; } 
+            else { date = this.getDateFromKwStr(document.getElementById('impKwList').value); } 
+            if(!date) return alert("Kein Datum gewählt!");
+            if(confirm(`ACHTUNG: Wirklich ALLE Daten für ${type} am ${date} (${kw}) löschen?`)) {
+                try {
+                    const r = await fetch('api.php?action=delete_event_data', { method: 'POST', body: JSON.stringify({type:type, date:date}) });
+                    const j = await r.json();
+                    if(j.status === 'success') { alert("Daten erfolgreich gelöscht!"); this.loadEvent('duel'); this.loadEvent('marshall'); } else { alert("Fehler beim Löschen"); }
+                } catch(e) { alert("Verbindungsfehler"); }
+            }
+        };
+
+        app.impData = async function() { 
+            const csv = document.getElementById('impCsv').value; 
+            const type = document.getElementById('impType').value; 
+            const mode = document.querySelector('input[name="dMode"]:checked').value; 
+            let date = ''; 
+            if(mode === 'date') { date = document.getElementById('impDate').value; } 
+            else { date = this.getDateFromKwStr(document.getElementById('impKwList').value); } 
+            if(!csv || !date) return alert("Fehlende Daten"); 
+            try {
+                const r = await fetch('api.php?action=import_data', { method: 'POST', body: JSON.stringify({csv:csv, type:type, date:date}) });
+                const j = await r.json();
+                if (j.status === 'success') { alert(`Import Erfolgreich! (${j.count} Datensätze)`); document.getElementById('impCsv').value = ''; this.loadEvent('duel'); this.loadEvent('marshall'); } else { alert("Import Fehler: " + (j.error || "Unbekannt")); }
+            } catch(e) { alert("Verbindungsfehler: " + e); }
+        };
+
+        app.load = async function() {
+            try {
+                const r = await fetch('api.php?t=' + Date.now());
+                const text = await r.text();
+                try {
+                    const j = JSON.parse(text);
+                    if(j.error) throw new Error(j.error);
+                    document.getElementById('errorBox').style.display='none';
+                    this.d = j; 
+                    this.ui(); this.tbl(); 
+                    setTimeout(() => this.renderMap(), 100);
+                    if(j.auth) {
+                        this.loadS(); this.loadEvent('duel'); this.loadEvent('marshall');
+                        if(this.allPlayers.length === 0) this.loadAllPlayers();
+                        if(j.role === 'R4' || j.role === 'R5') { this.usrs(); if(j.role === 'R5') this.loadSet(); }
+                    }
+                } catch(e) { console.error("API Error: " + e.message); }
+            } catch(e) { console.error("Network Error: " + e.message); }
+        };
+
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        app.runBatchAI = async function(elm) {
+            const files = elm.files;
+            if (!files.length) return;
+            const apiKey = document.getElementById('aiKey').value.trim();
+            const modelId = document.getElementById('aiModel').value;
+            const status = document.getElementById('aiStatus');
+            const output = document.getElementById('impCsv');
+            if(!apiKey) return alert("Bitte Gemini API Key eingeben.");
+            localStorage.setItem('wc_gemini_key', apiKey);
+            localStorage.setItem('wc_gemini_model', modelId);
+            status.innerHTML = `🚀 Starte Batch-Scan (${files.length} Bilder)...`;
+            status.style.color = "var(--cyan)";
+            let uniqueMap = new Map();
+            if(output.value.trim()) {
+                output.value.split('\n').forEach(line => {
+                    const p = line.split(';;;');
+                    if(p.length >= 2) uniqueMap.set(p[0].trim(), p[1].trim());
+                });
+            }
+            for (let i = 0; i < files.length; i++) {
+                if(i > 0) {
+                    status.innerHTML = `⏳ Warte 4s (Rate Limit Schutz)...`;
+                    await delay(4000);
+                }
+                const file = files[i];
+                status.innerHTML = `⏳ Bild ${i+1}/${files.length} wird verarbeitet...`;
+                try {
+                    const base64 = await this.toBase64(file);
+                    const prompt = "Extract player Name and Score from this leaderboard. Format: Name;;;Score. Example: Player1;;;1000. Return ONLY raw csv lines, no markdown, no header.";
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
+                    const payload = { "contents": [{ "parts": [ { "text": prompt }, { "inline_data": { "mime_type": "image/jpeg", "data": base64.split(',')[1] } } ] }] };
+                    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const json = await response.json();
+                    if (json.error) throw new Error(json.error.message || "API Error");
+                    let aiText = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                    aiText = aiText.replace(/```csv/g, '').replace(/```/g, '').trim();
+                    if (aiText) {
+                        const lines = aiText.split('\n');
+                        lines.forEach(line => {
+                            if(!line.trim()) return;
+                            const correctedLine = this.smartMatchLine(line);
+                            const parts = correctedLine.split(';;;');
+                            if(parts.length >= 2) uniqueMap.set(parts[0].trim(), parts[1].trim());
+                        });
+                        const finalLines = [];
+                        uniqueMap.forEach((score, name) => finalLines.push(`${name};;;${score}`));
+                        output.value = finalLines.join('\n');
+                    }
+                } catch (e) { 
+                    status.innerHTML = `❌ Fehler: ${e.message}`;
+                    status.style.color = "var(--red)";
+                    await delay(5000);
+                }
+            }
+            if(!status.innerHTML.includes("Fehler")) {
+                status.innerHTML = "✅ Scan fertig! Dubletten entfernt.";
+                status.style.color = "var(--green)";
+            }
+            elm.value = ''; 
+        };
+
+        app.toBase64 = file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+
+        app.smartMatchLine = function(line) {
+            if(!this.allPlayers || this.allPlayers.length === 0) return line;
+            const parts = line.split(';;;');
+            if(parts.length < 2) return line;
+            let name = parts[0].trim();
+            const score = parts[1].trim();
+            let bestMatch = name;
+            let minDist = 3; 
+            this.allPlayers.forEach(dbName => {
+                const dist = this.levenshtein(name.toLowerCase(), dbName.toLowerCase());
+                if(dist < minDist) { minDist = dist; bestMatch = dbName; }
+            });
+            return `${bestMatch};;;${score}`;
+        };
+
+        app.levenshtein = function(a, b) {
+            const m = [];
+            for(let i=0; i<=b.length; i++) m[i] = [i];
+            for(let j=0; j<=a.length; j++) m[0][j] = j;
+            for(let i=1; i<=b.length; i++){
+                for(let j=1; j<=a.length; j++){
+                    m[i][j] = b.charAt(i-1) === a.charAt(j-1) ? m[i-1][j-1] : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1);
+                }
+            }
+            return m[b.length][a.length];
+        };
+
+        app.manualUpdateModels = async function() {
+            const key = document.getElementById('aiKey').value.trim();
+            if(!key) return alert("Key fehlt!");
+            try {
+                const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+                const j = await r.json();
+                if(j.models) {
+                    const sel = document.getElementById('aiModel');
+                    const oldVal = sel.value;
+                    sel.innerHTML = '';
+                    const hardcoded = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
+                    hardcoded.forEach(m => sel.add(new Option(m + ' (Std)', m)));
+                    j.models.forEach(m => {
+                        const mId = m.name.replace('models/', '');
+                        if(!hardcoded.includes(mId)) sel.add(new Option(mId, mId));
+                    });
+                    sel.value = oldVal;
+                    alert("Liste aktualisiert!");
+                }
+            } catch(e) { alert("Fehler: " + e.message); }
+        };
+        
+        // --- NAVIGATION & UI ---
+        app.nav = function(p) {
+            document.querySelectorAll('.view').forEach(e=>e.classList.remove('show'));
+            document.getElementById('v-'+p).classList.add('show');
+            document.querySelectorAll('.m-btn').forEach(e=>e.classList.remove('active'));
+            const btns = document.querySelectorAll('.m-btn');
+            if(p==='dash') btns[0].classList.add('active');
+            if(p==='stats') { btns[1].classList.add('active'); this.loadS(); }
+            if(p==='duel') { document.getElementById('nDuel').classList.add('active'); this.loadEvent('duel'); }
+            if(p==='marsh') { document.getElementById('nMarsh').classList.add('active'); this.loadEvent('marshall'); }
+            if(p==='imp') document.getElementById('nImp').classList.add('active');
+            if(p==='adm') document.getElementById('nAdm').classList.add('active');
+        };
+        app.ui = function() {
+            const d=this.d, a=d.auth, r=d.role;
+            const isH = (r==='R4' || r==='R5');
+            document.getElementById('uStat').textContent=a?`${d.username} (${r})`:'Gast';
+            document.getElementById('bOut').style.display=a?'inline-block':'none';
+            ['nAdm', 'nImp'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).style.display = isH ? 'inline-block' : 'none'; });
+            ['nDuel', 'nMarsh'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).style.display = a ? 'inline-block' : 'none'; });
+            if(document.getElementById('boxAdm')) document.getElementById('boxAdm').style.display = isH ? 'block' : 'none';
+            if(document.getElementById('navR4Msg')) document.getElementById('navR4Msg').style.display = isH ? 'inline-block' : 'none';
+            if(document.getElementById('navAllyMsg')) document.getElementById('navAllyMsg').style.display = a ? 'inline-block' : 'none';
+            document.getElementById('statAdm').style.display=a?'block':'none';
+            document.getElementById('statGst').style.display=a?'none':'block';
+            document.getElementById('bSave').style.display=isH?'inline-block':'none';
+            const iS=document.getElementById('iSrv'), vS=document.getElementById('vSrv');
+            if(iS && iS.options.length !== d.servers.length) { iS.innerHTML=''; vS.innerHTML=''; d.servers.forEach(s=>{ let o=new Option(s.name,s.name); iS.add(o); vS.add(o.cloneNode(true)); }); this.updateAllyList(); }
+        };
+        
+        // --- MAP RENDER (SAFE) ---
+        app.renderMap = function() {
+            const mapEl = document.getElementById('mapContainer');
+            const tt = document.getElementById('tooltip');
+            if(!mapEl) return;
+            mapEl.innerHTML = '';
+            const dataToUse = (window.staticMapData && window.staticMapData.length > 0) ? window.staticMapData : [];
+            if(dataToUse.length === 0) {
+                mapEl.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%; color:#666;">Keine Kartendaten geladen.</div>';
+                return;
+            }
+            const activeSrv = document.getElementById('vSrv').value || (this.d.servers[0] ? this.d.servers[0].name : '');
+            dataToUse.forEach(line => {
+                const coord = line.match(/x\s*(\d+)\s*y\s*(\d+)/i);
+                if(!coord) return;
+                const x = parseInt(coord[1]), y = parseInt(coord[2]);
+                let w=49, h=49, type='base';
+                if(line.includes('grosse')) h=73;
+                if(line.includes('Kapitol')) { w=98; h=98; type='capitol'; }
+                else if(!line.includes('Militär')) type='city';
+                const ownerMatch = line.match(/\|\s*Owner:\s*(.*?)\s*(?:\||$)/), colorMatch = line.match(/\|\s*Color:\s*(.*?)\s*(?:\||$)/);
+                const owner = ownerMatch ? ownerMatch[1] : ''; const color = colorMatch ? colorMatch[1] : '';
+                const d = document.createElement('div');
+                d.className = 'map-tile c-'+type;
+                d.style.left = (x/10)+'%'; d.style.bottom = (y/10)+'%'; d.style.width = 'calc('+(w/10)+'% - 0.15%)'; d.style.height = 'calc('+(h/10)+'% - 0.15%)';
+                const hexToRgba = (hex, alpha) => {
+                    if(!hex || hex === '#000000') return null;
+                    let c = hex.substring(1).split('');
+                    if(c.length==3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+                    c = '0x'+c.join('');
+                    return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+                };
+                if(color) { d.style.backgroundColor = hexToRgba(color, 0.6); d.style.borderColor = color; }
+                let name = line.match(/-\s(.*?)\sLv\./)?.[1] || 'Objekt';
+                let lvl = line.match(/(?:Lv\.?|lv\.)\s*(\d+)/)?.[1] || '1';
+                d.innerHTML = '<div>'+name.substr(0,8)+'<br>Lv.'+lvl+'</div>';
+                const activeTimer = this.d.timers.find(t => t.server_id == activeSrv && Math.abs(t.x - x) < 5 && Math.abs(t.y - y) < 5);
+                if(activeTimer) { 
+                    d.classList.add('active-timer'); 
+                    let renderColor = activeTimer.color || '#ff4d4d'; 
+                    const isLocal = !activeTimer.alliance || this.serverStats.some(s => s.server_name == activeSrv && s.alliance_name == activeTimer.alliance);
+                    d.style.borderColor = renderColor;
+                    if(!isLocal) {
+                        d.style.backgroundColor = 'transparent';
+                        d.style.backgroundImage = `repeating-linear-gradient(45deg, ${renderColor}33, ${renderColor}33 10px, transparent 10px, transparent 20px)`;
+                        d.style.borderStyle = 'dashed';
+                    } else { d.style.borderStyle = 'solid'; }
+                }
+                d.onclick = () => {
+                    if(!this.d.auth) { document.getElementById('m-log').style.display='flex'; return; }
+                    if(this.d.role !== 'R4' && this.d.role !== 'R5') return;
+                    this.nav('dash');
+                    const colIdx = Math.round((x - 25) / 50), rowVal = Math.round((y + 25) / 50), rowInv = 21 - rowVal; 
+                    const l = this.l[colIdx] || 'A', n = rowInv > 0 && rowInv <= 20 ? rowInv : 1;
+                    document.getElementById('iL').value = l; document.getElementById('iN').value = n;
+                    document.getElementById('iX').value = x; document.getElementById('iY').value = y;
+                    document.getElementById('iName').value = name;
+                    document.getElementById('boxAdm').scrollIntoView({behavior:'smooth'});
+                };
+                d.onmouseenter = (e) => {
+                    tt.style.display='block';
+                    let txt = `<b style="color:#66fcf1">${name}</b><br>Level: ${lvl}<br>Pos: ${x}/${y}`;
+                    if(owner) txt += `<br>Besitzer: <span style="color:${color||'#fff'}">${owner}</span>`;
+                    if(activeTimer) txt += `<br><b style="color:#ff4d4d">TIMER AKTIV: ${activeTimer.action_type.toUpperCase()}</b><br>Allianz: ${activeTimer.alliance||'-'}`;
+                    tt.innerHTML = txt;
+                };
+                d.onmousemove = (e) => {
+                    const ttHeight = tt.offsetHeight, my = e.clientY, winHeight = window.innerHeight;
+                    tt.style.left = (e.clientX + 15) + 'px';
+                    if (my + ttHeight + 25 > winHeight) tt.style.top = (my - ttHeight - 10) + 'px'; else tt.style.top = (my + 15) + 'px';
+                };
+                d.onmouseleave = () => { tt.style.display='none'; };
+                mapEl.appendChild(d);
+            });
+        };
+
+        app.loadS = async function() { try{ const r=await fetch('api.php?action=get_stats&t='+Date.now()); const d=await r.json(); this.serverStats = d.stats||[]; this.draw(d.stats||[]); }catch(e){} };
+        app.draw = function(st) { 
+            const ctx=document.getElementById('chart'); if(!ctx)return; 
+            const lbs = this.d.servers.map(s => "S " + s.name); 
+            const sNames = this.d.servers.map(s => s.name); 
+            const t5=[], t10=[], det={}; 
+            sNames.forEach((srv, idx) => { 
+                let s5=0, s10=0, l=[]; 
+                st.filter(x=>x.server_name==srv).forEach(e=>{ 
+                    const p=parseFloat(e.power)||0; 
+                    if(e.rank<=5) s5+=p; if(e.rank<=10) s10+=p; 
+                    if(e.rank<=10) l.push({r:e.rank, n:e.alliance_name||'?', p:p}); 
+                }); 
+                t5.push(s5); t10.push(s10); 
+                det[lbs[idx]] = {s5, s10, l:l.sort((a,b)=>a.r-b.r)}; 
+            }); 
+            if(this.chart) this.chart.destroy(); 
+            this.chart = new Chart(ctx, { 
+                type:'bar', 
+                data:{labels:lbs,datasets:[{label:'Top5',data:t5,backgroundColor:'#66fcf1'},{label:'Top10',data:t10,backgroundColor:'#45a29e'}]}, 
+                options:{ 
+                    responsive:true, maintainAspectRatio:false, layout:{padding:{top:30}}, 
+                    plugins:{
+                        legend:{labels:{color:'white'}}, 
+                        datalabels:{color:'white',anchor:'end',align:'end',offset:-5, font:{weight:'bold'}, formatter:(v)=>v>=1000?(v/1000).toFixed(1)+'G':v.toFixed(0)+'M'}, 
+                        tooltip:{callbacks:{afterBody:(c)=>{ const s=c[0].label, m=c[0].dataset.label, d=det[s]; if(!d)return[]; const lim=(m==='Top5')?5:10, tot=(m==='Top5')?d.s5:d.s10; let ln=["",`--- ${m} ---`]; d.l.forEach(a=>{if(a.r<=lim){ const pVal = a.p>=1000?(a.p/1000).toFixed(1)+'G':a.p.toFixed(0)+'M'; ln.push(`#${a.r} ${a.n}: ${pVal}`); }}); return ln; }}} 
+                    }, 
+                    scales:{y:{ticks:{color:'#888'},grid:{color:'#333'}},x:{ticks:{color:'#fff'}}} 
+                } 
+            }); 
+            if(this.d.auth) { 
+                const h=document.getElementById('thStat'), b=document.getElementById('tbStat'); 
+                if(h && b) { 
+                    h.innerHTML='<th>#</th>'; this.d.servers.forEach(s=>h.innerHTML+=`<th>${s.name}</th>`); b.innerHTML=''; 
+                    for(let r=1; r<=10; r++) { 
+                        let rw=`<td>${r}</td>`; 
+                        this.d.servers.forEach(s=>{ 
+                            const e=st.find(x=>x.server_name==s.name && x.rank==r); const rawP=e?parseFloat(e.power):0; const n=e&&e.alliance_name?e.alliance_name:''; const dispP = rawP ? (rawP / 1000).toFixed(3).replace(/\.?0+$/, '') : ''; const ro = (this.d.role === 'R4' || this.d.role === 'R5') ? '' : 'disabled style="background:#222;color:#666;border:none;"';
+                            rw+=`<td><div class="inp-row"><input ${ro} class="st-n" data-s="${s.name}" data-r="${r}" value="${n}" placeholder="Name" oninput="app.dirty(this)"></div><div class="inp-row"><input ${ro} type="number" step="0.001" class="st-p" data-s="${s.name}" data-r="${r}" value="${dispP}" placeholder="Mrd" oninput="app.dirty(this)"></div></td>`; 
+                        }); b.innerHTML+=`<tr>${rw}</tr>`; 
+                    } 
+                } 
+            } 
+        };
+        app.loadEvent=async function(type) { try { const r = await fetch(`api.php?action=get_event_data&type=${type}&t=${Date.now()}`); const d = await r.json(); this.eventData[type] = d.data || []; if(d.week_settings) this.weekSettings = d.week_settings; this.renderEventData(type); } catch(e) {} };
+        app.renderEventData=function(type,dateFilter=null) { 
+            const id = (type === 'marshall') ? 'tMarsh' : 'tDuel'; 
+            const selId = (type === 'marshall') ? 'selMarshW' : 'selDuelW'; 
+            const chartId = (type === 'marshall') ? 'chartMarsh' : 'chartDuel';
+            const searchId = (type === 'marshall') ? 'searchMarsh' : 'searchDuel';
+            const data = this.eventData[type] || []; 
+            const dates = [...new Set(data.map(d => d.import_date))].sort().reverse(); 
+            const sel = document.getElementById(selId); 
+            if(sel && sel.options.length === 0) { dates.forEach(d => { let txt = app.getKwFromDate(d); if(this.weekSettings[d] == 1 && type === 'duel') txt += " 🐷"; sel.add(new Option(txt, d)); }); }
+            if(sel) { for(let i=0; i<sel.options.length; i++){ let d = sel.options[i].value; let txt = app.getKwFromDate(d) + (this.weekSettings[d] == 1 && type === 'duel' ? " 🐷" : ""); sel.options[i].text = txt; } }
+            const currentWeek = dateFilter || (sel ? sel.value : dates[0]);
+            if(sel && !dateFilter) sel.value = currentWeek;
+            if(type === 'duel') { const chk = document.getElementById('chkSaveWeek'); chk.checked = (this.weekSettings[currentWeek] == 1); }
+            const currIdx = dates.indexOf(currentWeek); 
+            const prevWeek = dates[currIdx + 1]; 
+            const tb = document.querySelector(`#${id} tbody`); 
+            if(!tb) return; 
+            const searchVal = document.getElementById(searchId).value.toLowerCase();
+            const rangeVal = (type==='duel') ? document.getElementById('filterDuelRange').value : 'all';
+            let filtered = data.filter(d => d.import_date === currentWeek);
+            if(searchVal) filtered = filtered.filter(d => d.player_name.toLowerCase().includes(searchVal));
+            if(type === 'duel' && rangeVal !== 'all') { const [min, max] = rangeVal.split('-').map(Number); filtered = filtered.filter(d => { const s = parseInt(d.score)||0; const avg = s / 6; return avg >= min && avg <= max; }); }
+            filtered.sort((a,b) => b.score - a.score); 
+            const totalScore = filtered.reduce((sum, d) => sum + (parseInt(d.score)||0), 0); 
+            let cumulativeShare = 0; const seen = new Set(); let rank = 1; const isAdm = (app.d.role === 'R4' || app.d.role === 'R5'); 
+            const chartLabels = []; const chartValues = []; let otherScore = 0; let h = ''; 
+            filtered.forEach((d) => { 
+                if(seen.has(d.player_name)) return; seen.add(d.player_name); 
+                const s0 = parseInt(d.score)||0; 
+                const prev = prevWeek ? data.find(p => p.player_name === d.player_name && p.import_date === prevWeek) : null; 
+                let trend = '<span class="trend-flat">➡️ 0%</span>'; 
+                if(prev && prev.score > 0) { const diff = s0 - prev.score; const pct = ((diff / prev.score) * 100).toFixed(1); if(diff > 0) trend = `<span class="trend-up">⬆️ +${pct}%</span>`; if(diff < 0) trend = `<span class="trend-down">⬇️ ${pct}%</span>`; } else if (!prevWeek) { trend = '<span style="color:#666;font-size:0.8em">Kein Vgl.</span>'; } else { trend = '<span class="trend-up">⭐ NEU</span>'; } 
+                const share = totalScore > 0 ? (s0 / totalScore) * 100 : 0; cumulativeShare += share; 
+                if(rank <= 30) { chartLabels.push(d.player_name); chartValues.push(s0); } else { otherScore += s0; } 
+                const p1 = prevWeek ? data.find(p => p.player_name === d.player_name && p.import_date === prevWeek) : null; 
+                const s1 = p1 ? parseInt(p1.score)||0 : 0; 
+                const p2 = dates[currIdx+2] ? data.find(p => p.player_name === d.player_name && p.import_date === dates[currIdx+2]) : null; 
+                const s2 = p2 ? parseInt(p2.score)||0 : 0; 
+                const max = Math.max(s0, s1, s2) || 1; 
+                const b0 = `<div style="height:4px;background:var(--cyan);width:${(s0/max)*100}%;margin-bottom:2px;border-radius:2px" title="Aktuell: ${s0.toLocaleString()}"></div>`; 
+                const b1 = `<div style="height:4px;background:var(--blue);width:${(s1/max)*100}%;margin-bottom:2px;border-radius:2px;opacity:0.7" title="${prevWeek?app.getKwFromDate(prevWeek):'-'}: ${s1.toLocaleString()}"></div>`;
+                const b2 = `<div style="height:4px;background:#666;width:${(s2/max)*100}%;border-radius:2px;opacity:0.5" title="Vor-Vorwoche: ${s2.toLocaleString()}"></div>`; 
+                const editBtn = isAdm ? `<span class="edit-icon" onclick="app.editPl(${d.id},'${d.player_name.replace(/'/g,"\\'")}','${type}')">✏️</span>` : ''; 
+                let chkBox = '';
+                if(type === 'duel') { const isChk = app.compareList.includes(d.player_name); chkBox = `<td><input type="checkbox" ${isChk?'checked':''} onchange="app.toggleCompare('${d.player_name.replace(/'/g,"\\'")}');"></td>`; }
+                h += `<tr>${chkBox}<td style="color:#888;text-align:center">${rank}</td><td style="color:#fff;font-weight:bold">${d.player_name} ${editBtn}</td><td style="color:var(--gold);font-family:monospace">${s0.toLocaleString()}</td><td style="color:#aaa;font-size:0.85rem">${share.toFixed(2)}%</td><td style="color:#aaa;font-size:0.85rem">${cumulativeShare.toFixed(1)}%</td><td>${trend}</td><td style="vertical-align:middle"><div style="display:flex;flex-direction:column;width:100px">${b0}${b1}${b2}</div></td></tr>`; 
+                rank++; 
+            }); 
+            tb.innerHTML = h || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#666">Keine Daten</td></tr>'; 
+            if(otherScore > 0) { chartLabels.push("Sonstige"); chartValues.push(otherScore); } 
+            app.drawEventChart(type, chartId, chartLabels, chartValues);
+            if(type === 'duel') this.updateDuelLineChart();
+            if(type === 'marshall') this.updateMarshallStats(data); 
+        };
+        app.drawEventChart=function(type,canvasId,labels,data) { const ctx=document.getElementById(canvasId); if(!ctx)return; if(app.chartEvents[type])app.chartEvents[type].destroy(); const colors=['#ff4d4d','#ffa502','#2ed573','#1e90ff','#3742fa','#5352ed','#70a1ff','#2f3542','#a4b0be','#ff7f50','#7bed9f','#ff6b81','#ced6e0','#f1f2f6','#ff9ff3','#feca57','#54a0ff','#5f27cd','#c8d6e5','#576574','#222f3e','#1dd1a1','#ff9f43','#ee5253','#0abde3','#10ac84','#00d2d3','#5f27cd','#9c88ff','#00a8ff']; app.chartEvents[type]=new Chart(ctx,{type:'doughnut',data:{labels:labels,datasets:[{data:data,backgroundColor:labels.map((_,i)=>colors[i%colors.length]),borderWidth:1,borderColor:'#1f2833'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#ccc',font:{size:10},boxWidth:12}},title:{display:true,text:'Punkteverteilung (Top 30 vs Rest)',color:'#fff'},datalabels:{color:'#fff',font:{weight:'bold',size:10},formatter:(value,ctx)=>{let sum=0;let dataArr=ctx.chart.data.datasets[0].data;dataArr.map(data=>{sum+=data});return(value*100/sum)>2?(value*100/sum).toFixed(1)+"%":null}}}}}); };
+        app.toggleCompare = function(name) { const idx = this.compareList.indexOf(name); if(idx > -1) { this.compareList.splice(idx, 1); } else { if(this.compareList.length >= 20) { alert("Maximal 20 Spieler im Vergleich!"); return; } this.compareList.push(name); } this.updateDuelLineChart(); };
+        app.updateDuelLineChart = function() { const ctx = document.getElementById('chartDuelLine'); if(!ctx) return; if(this.chartEvents.duelLine) this.chartEvents.duelLine.destroy(); const rawData = this.eventData['duel'] || []; const dates = [...new Set(rawData.map(d => d.import_date))].sort(); const datasets = []; const colors=['#ff4d4d','#ffa502','#2ed573','#1e90ff','#3742fa','#5352ed','#70a1ff','#ffffff','#ff7f50','#7bed9f','#ff6b81','#ced6e0','#f1f2f6','#ff9ff3','#feca57','#54a0ff','#5f27cd','#c8d6e5','#576574']; if(this.compareList.length === 0) { } else { this.compareList.forEach((player, i) => { const pData = []; dates.forEach(d => { const entry = rawData.find(x => x.import_date === d && x.player_name === player); pData.push(entry ? parseInt(entry.score) : 0); }); datasets.push({ label: player, data: pData, borderColor: colors[i % colors.length], backgroundColor: 'transparent', tension: 0.3, borderWidth: 2, pointRadius: 3 }); }); } this.chartEvents.duelLine = new Chart(ctx, { type: 'line', data: { labels: dates.map(d => app.getKwFromDate(d)), datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'white' } }, datalabels: { display: false } }, scales: { y: { ticks: { color: '#888' }, grid: { color: '#333' } }, x: { ticks: { color: '#fff' } } } } }); };
+        app.toggleSaveWeek = async function() { const sel = document.getElementById('selDuelW'); const week = sel.value; const isSave = document.getElementById('chkSaveWeek').checked; this.weekSettings[week] = isSave ? 1 : 0; let txt = app.getKwFromDate(week) + (isSave ? " 🐷" : ""); sel.options[sel.selectedIndex].text = txt; await this.post('set_week_status', { week_id: week, is_save: isSave }); };
+        app.updateMarshallStats = function(allData) { const ctx = document.getElementById('chartMarshStats'); if(!ctx) return; if(this.chartEvents.marshStats) this.chartEvents.marshStats.destroy(); const weeks = [...new Set(allData.map(d => d.import_date))]; const totalWeeks = weeks.length; if(totalWeeks === 0) return; const players = {}; const weekTotals = {}; weeks.forEach(w => { weekTotals[w] = allData.filter(d => d.import_date === w).reduce((acc, c) => acc + parseInt(c.score), 0); }); allData.forEach(d => { if(!players[d.player_name]) players[d.player_name] = { count: 0, sumShare: 0 }; players[d.player_name].count++; const wTotal = weekTotals[d.import_date] || 1; players[d.player_name].sumShare += (parseInt(d.score) / wTotal); }); const pList = Object.keys(players).map(name => ({ name: name, part: players[name].count, avgShare: (players[name].sumShare / players[name].count) * 100 })).sort((a,b) => b.part - a.part || b.avgShare - a.avgShare).slice(0, 50); const labels = pList.map(x => x.name); const dataPart = pList.map(x => x.part); const dataShare = pList.map(x => x.avgShare); this.chartEvents.marshStats = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [ { label: 'Teilnahmen', data: dataPart, backgroundColor: '#6bcB77', yAxisID: 'y' }, { label: 'Ø Anteil % (wenn anwesend)', data: dataShare, backgroundColor: '#ff9f43', yAxisID: 'y1' } ] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'white' } }, datalabels: { display: false } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#fff', font:{size:10} } }, y1: { display: false } } } }); };
+        app.loadAllPlayers=async function() { try{const r=await fetch('api.php?action=get_unique_names');const j=await r.json();app.allPlayers=j.names||[]; debug.log(`Spieler-DB geladen (${app.allPlayers.length} Einträge)`);}catch(e){}};
+        app.editPl=function(id,name,type){document.getElementById('editPlId').value=id;document.getElementById('editPlName').value=name;document.getElementById('editPlType').value=type;document.getElementById('m-edit-player').style.display='flex';document.getElementById('ac-list').style.display='none'};
+        app.filterNames=function(){const input=document.getElementById('editPlName');const val=input.value.toLowerCase();const list=document.getElementById('ac-list');list.innerHTML='';if(!val){list.style.display='none';return}const matches=app.allPlayers.filter(n=>n.toLowerCase().includes(val));if(matches.length===0){list.style.display='none';return}matches.slice(0,10).forEach(name=>{const div=document.createElement('div');div.className='autocomplete-item';div.textContent=name;div.onclick=()=>{input.value=name;list.style.display='none'};list.appendChild(div)});list.style.display='block'};
+        app.savePl=async function(){const id=document.getElementById('editPlId').value;const newName=document.getElementById('editPlName').value;const type=document.getElementById('editPlType').value;if(!newName)return alert("Name darf nicht leer sein");try{const r=await fetch('api.php?action=update_event_name',{method:'POST',body:JSON.stringify({id:id,newName:newName,type:type})});const j=await r.json();if(j.status==='success'){document.getElementById('m-edit-player').style.display='none';app.loadEvent(type);app.loadAllPlayers()}else{alert("Fehler beim Speichern")}}catch(e){alert("Verbindungsproblem")}};
+        app.updateAllyList = function() { };
+        app.filterAlly = function() { const input = document.getElementById('iAlly'); const val = input.value.toLowerCase(); const list = document.getElementById('ally-list'); list.innerHTML = ''; if(!val || !this.serverStats) { list.style.display='none'; return; } const matches = this.serverStats.filter(s => s.alliance_name && s.alliance_name.toLowerCase().includes(val)).map(s => s.alliance_name); const uniqueMatches = [...new Set(matches)]; if(uniqueMatches.length === 0) { list.style.display='none'; return; } uniqueMatches.slice(0, 10).forEach(name => { const div = document.createElement('div'); div.className = 'autocomplete-item'; div.textContent = name; div.onclick = () => { input.value = name; list.style.display='none'; }; list.appendChild(div); }); list.style.display = 'block'; };
+        app.toggleColorInput = function() { const isDef = document.getElementById('iColorDef').checked; document.getElementById('iColor').style.display = isDef ? 'none' : 'block'; document.getElementById('iColorFake').style.display = isDef ? 'flex' : 'none'; };
+        app.openMsg = function(type) { document.getElementById('msgType').value = type; document.getElementById('msgTitle').textContent = (type === 'r4') ? "🔒 R4 Nachricht" : "📢 Allianz Nachricht"; document.getElementById('msgText').value = ''; app.modal('msg'); };
+        app.sendMsg = async function() { const type = document.getElementById('msgType').value; const text = document.getElementById('msgText').value; if(!text) return alert("Bitte Text eingeben"); try { const r = await fetch('api.php?action=send_custom_msg', { method: 'POST', body: JSON.stringify({type: type, msg: text}) }); const j = await r.json(); if(j.status === 'success') { alert("Nachricht gesendet!"); app.modal(); } else { alert("Fehler: " + (j.error || "Unbekannt")); } } catch(e) { alert("Verbindung fehlgeschlagen"); } };
+        app.calcXY=function(){const l=document.getElementById('iL').value,n=document.getElementById('iN').value;if(l&&n){document.getElementById('iX').value=(this.l.indexOf(l)*50)+25;document.getElementById('iY').value=(21-parseInt(n))*50-25}};
+        app.sync=function(v){document.getElementById('iSrv').value=v;document.getElementById('vSrv').value=v;this.renderMap(); this.updateAllyList();};
+        app.modal=function(id){document.querySelectorAll('.modal').forEach(e=>e.style.display='none');if(id)document.getElementById('m-'+id).style.display='flex'};
+        app.bagger=async function(){const btn=document.querySelector('.btn-bagger');btn.textContent="SENDING...";btn.style.background="#fff";btn.style.color="red";await this.post('bagger_alarm',{});btn.textContent="SENT! ✅";setTimeout(()=>{btn.textContent="🚜 BAGGER";btn.style.background="";btn.style.color="white"},2000)};
+        app.post=async function(a,d){try{await fetch(`api.php?action=${a}`,{method:'POST',body:JSON.stringify(d)});this.load()}catch(e){}};
+        app.login=async function(){const u=document.getElementById('loginUser').value;const p=document.getElementById('loginPass').value;const r=await fetch('api.php?action=login',{method:'POST',body:JSON.stringify({username:u,password:p})});const j=await r.json();if(j.status==='success')location.reload();else alert("Login failed")};
+        app.out=async function(){await fetch('api.php?action=logout',{method:'POST'});location.reload()};
+        app.chgP=async function(){const o=document.getElementById('pO').value,n=document.getElementById('pN').value;const r=await fetch('api.php?action=change_own_password',{method:'POST',body:JSON.stringify({old_pass:o,new_pass:n})});if(r.ok){alert("OK");this.modal()}else alert("Fehler")};
+        app.addT=function(){ const useDef = document.getElementById('iColorDef').checked; const colorVal = useDef ? "" : document.getElementById('iColor').value; this.post('add_timer',{server:document.getElementById('iSrv').value,name:document.getElementById('iName').value,alliance:document.getElementById('iAlly').value,act:document.getElementById('iAct').value,coord:document.getElementById('iL').value+document.getElementById('iN').value,x:document.getElementById('iX').value,y:document.getElementById('iY').value,color:colorVal,d:document.getElementById('iD').value,h:document.getElementById('iH').value,m:document.getElementById('iM').value}) };
+        app.del=function(id,e){if(e){e.preventDefault();e.stopPropagation()}if(confirm("Löschen?"))this.post('delete_timer',{id:id})};
+        app.mkS=function(){this.post('add_server',{name:document.getElementById('nS').value})};
+        app.rmS=function(){this.post('delete_server',{name:document.getElementById('nS').value})};
+        app.mkU=function(){this.post('add_user',{username:document.getElementById('nU').value,password:document.getElementById('nP').value,role:document.getElementById('nR').value})};
+        app.rmU=function(id){if(confirm("Löschen?"))this.post('delete_user',{id:id})};
+        app.saveS=async function(){const dirty=document.querySelectorAll('.st-p.is-dirty');if(dirty.length===0){alert("Nichts geändert");return}const arr=[];dirty.forEach(i=>{const s=i.dataset.s,r=i.dataset.r,n=document.querySelector(`.st-n[data-s="${s}"][data-r="${r}"]`).value;const val=Math.round(parseFloat(i.value)*1000);arr.push({server:s,rank:r,power:val,name:n})});await this.post('save_stats',{data:arr});alert("Gespeichert")};
+        app.loadSet=async function(){try{const r=await fetch('api.php?action=get_settings');const d=await r.json();if(d.discord_webhook)document.getElementById('setWebhook').value=d.discord_webhook;if(d.bagger_webhook)document.getElementById('setBagger').value=d.bagger_webhook;if(d.allianz_webhook)document.getElementById('setAllianz').value=d.allianz_webhook;if(d.r4_webhook)document.getElementById('setR4').value=d.r4_webhook;}catch(e){}};
+        app.saveSet=async function(){const val=document.getElementById('setWebhook').value;const bag=document.getElementById('setBagger').value;const ally=document.getElementById('setAllianz').value;const r4=document.getElementById('setR4').value;await this.post('save_settings',{discord_webhook:val,bagger_webhook:bag,allianz_webhook:ally,r4_webhook:r4});alert("Gespeichert")};
+        app.triggerRestore=function(){document.getElementById('restoreFile').click()};
+        app.uploadRestore=async function(){const input=document.getElementById('restoreFile');if(input.files.length>0){const formData=new FormData();formData.append('file',input.files[0]);try{const r=await fetch('api.php?action=restore_db',{method:'POST',body:formData});const j=await r.json();if(j.status==='success'){alert("Datenbank erfolgreich wiederhergestellt!");location.reload()}else{alert("Fehler beim Restore: "+(j.error||"Unbekannt"))}}catch(e){alert("Upload Fehler: "+e)}}};
+        app.tbl=function(){const t=document.querySelector('#tTimer tbody');if(!t)return;let h=''; const acts={conquer:'⚔️ Erobern',abandon:'🏳️ Aufgeben',protect:'🛡️ Schutz',extend_protect:'🛡️ Schutz verl.',defend:'🔥 Kampf',other:'-'}; const actCls={conquer:'act-conquer',abandon:'act-abandon',protect:'act-protect',extend_protect:'act-extend_protect',defend:'act-defend',other:''}; this.d.timers.forEach(tm=>{const s=parseInt(tm.rem),hr=Math.floor(s/3600),mn=Math.floor((s%3600)/60);const cl=hr<4?'tag-bad':'tag-ok';const bt=(this.d.role==='R4'||this.d.role==='R5')?`<button type=\"button\" class=\"btn-del\" onclick=\"event.stopPropagation(); app.del(${tm.id}, event)\">X</button>`:''; const ally = tm.alliance ? `<td><span style=\"color:#aaa\">${tm.alliance}</span></td>` : '<td>-</td>'; h+=`<tr><td>${tm.server_id}</td><td>${tm.target_name}</td>${ally}<td class=\"${actCls[tm.action_type]}\">${acts[tm.action_type]||'-'}</td><td>${tm.coord}</td><td>${new Date(tm.end_time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td><td><span class=\"${cl}\">${hr}h ${mn}m</span></td><td>${bt}</td></tr>`});t.innerHTML=h;document.getElementById('noData').style.display=h?'none':'block'};
+        app.usrs = async function() { try { const r=await fetch('api.php?action=get_users',{method:'POST'}); const d=await r.json(); const l=document.getElementById('lU'); if(l){ l.innerHTML=''; if(d.users) d.users.forEach(u=>{ const isSelf = (u.username === this.d.username); let sel = `<select class=\"role-sel\" onchange=\"app.upRole(${u.id}, this)\" ${isSelf?'disabled':''}>`; ['R1','R2','R3','R4','R5'].forEach(rk => sel+=`<option ${u.role===rk?'selected':''}>${rk}</option>`); sel += `</select>`; l.innerHTML+=`<div class=\"u-item\"><div><span style=\"color:#fff;font-weight:bold\">${u.username}</span> ${sel}</div><span style=\"color:var(--red);cursor:pointer\" onclick=\"app.rmU(${u.id})\">×</span></div>`; }); } } catch(e) {} };
+        app.upRole = async function(id, el) { await this.post('update_user_role', {id:id, role:el.value}); el.parentElement.classList.add('flash-success'); setTimeout(()=>el.parentElement.classList.remove('flash-success'), 500); };
+        app.toggleDebug = function() { const s = document.getElementById('debugSection'); if(s) s.style.display = s.style.display === 'block' ? 'none' : 'block'; };
+        
+        window.app = app;
+        app.init();
+    });
+
+    // --- ISOLATED MAP DATA (CLEANED FOR GITHUB) ---
+    // !!! INSTRUCTION: Replace this array with your full map data array !!!
+    window.staticMapData = [
+        "x 35 y 966 kleine Kachel 49 x 49felder - Militärstützpunkt Lv. 1 - Einflusspunkte + 5.000 - Verderber Lv. 1",
+        "x 280 y 954 grosse Kachel 49 x 73 felder - Militärstützpunkt Lv. 1 - Einflusspunkte + 5.000 - Verderber Lv. 1",
+        "x 501 y 501 Kapitol 98 x 98 - Kapitol Lv. 7 - Einflusspunkte + 2.000.000 ",
+        // ... (Paste your full map data here) ...
+    ];
+</script>
+
+</body>
+</html>
